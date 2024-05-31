@@ -6,22 +6,15 @@ use std::hash::{Hash, Hasher};
 const CHAIN_SIZE:usize = 32;
 fn main() {
 
-    // const CHAIN_SIZE:usize = 32;
-
-    // Build chain with 1 for z-up and -1 for z-down
-
-
     let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
     let mut chain_hash_set: HashSet<u64> = HashSet::new();
-    let mut is_chain_valid = false;
+    let mut is_chain_valid: bool = false;
     for _i in 0..20 {
         let mut spin_chain: SpinChain<32> = SpinChain::new_empty();
 
         while !is_chain_valid {
 
-         spin_chain = SpinChain::new();
-
-         // populate_spin_chain(&spin_chain);
+            spin_chain = SpinChain::new();
 
             let mut spin_count = 0;
             let mut size = 0;
@@ -30,7 +23,6 @@ fn main() {
                 size += 1;
                 spin_count = spin + spin_count; 
             }
-
     
             if spin_count == 0 && !chain_hash_set.contains(&spin_chain.chain_hash){
                 is_chain_valid = true;
@@ -74,7 +66,7 @@ pub struct SpinChain<const N: usize> {
     pub chain_hash: u64
 }
 
-// Creates a Spin Chain based on height above horizon.
+/// Creates a Spin Chain based on "height above horizon".
 //  Arrays:
 //    Fixed Size: Arrays have a fixed size known at compile time.
 //    Stack Allocation: Arrays are allocated on the stack, making them very fast for access and creation.
@@ -124,9 +116,9 @@ impl<const N: usize> SpinChain<N> {
         chain
     }     
 }
-///
+/// Calculates the probability of next spin being up. Based on Eq. 10
+/// in arXiv:1805.00532
 /// Pr(z_i+1 = up) = (h_i + 2)(N - i - h_i)/[2(h_i + 1)(N - i)]
-/// 
 fn calculate_next_spin_prob(length: u32, current_index: u32, height: u32) -> f64 {
 
     let numerator: f64 = ((height + 2) * (length - current_index - height)).try_into().expect("Could not turn u32 into f64 - numerator");
@@ -138,6 +130,7 @@ fn calculate_next_spin_prob(length: u32, current_index: u32, height: u32) -> f64
     spin_up_prob
 }
 
+/// Determines the next spin via taking random samples from the unit line.
 fn determine_next_spin(prob_up: f64, trials: u128) -> bool {
 
     let mut up_spin:u128 = 0;
@@ -158,5 +151,4 @@ fn determine_next_spin(prob_up: f64, trials: u128) -> bool {
     println!("down_spin: {}", down_spin);
 
     return up_spin > down_spin;
-
 }
