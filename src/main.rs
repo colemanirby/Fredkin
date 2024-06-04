@@ -2,78 +2,100 @@ use rand::Rng;
 use rand::prelude::ThreadRng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::collections::HashMap;
 
 const CHAIN_SIZE:usize = 32;
 fn main() {
-
+    // These should be command line arguments
     let number_of_chains = 100;
     let number_of_generations = 10;
     let do_print_chains = false;
+    let count_degen_chains = true;
+    //
+
+    let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE])> = HashMap::new();
 
     for _i in 1..=number_of_generations{
         let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
-        // let mut chain_hash_set: HashSet<u64> = HashSet::new();
         let mut is_chain_valid: bool = false;
         for _j in 0..number_of_chains {
-            let mut spin_chain: SpinChain<32> = SpinChain::new_empty();
+            let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
     
             while !is_chain_valid {
-    
+
                 spin_chain = SpinChain::new();
-    
-                let mut spin_count = 0;
+
                 let mut _size = 0;
-    
-                for spin in spin_chain.chain {
-                    _size += 1;
-                    spin_count = spin + spin_count; 
-                }
-        
-                // if spin_count == 0 && !chain_hash_set.contains(&spin_chain.chain_hash){
-                if spin_count == 0{
-                    is_chain_valid = true;
-                    // chain_hash_set.insert(spin_chain.chain_hash);
-                    // println!("Spin count {}", spin_count);
-                    // println!("Size: {}", size);
-                    // print!("{:?}", spin_chain.chain);
-                    // println!("");
-                } else {
-                    // let collision = chain_hash_set.contains(&spin_chain.chain_hash);
-                    // println!("Current Chain Hash: {}", spin_chain.chain_hash);
-                    // println!("Hash Set: ");
-                    // for hash in &chain_hash_set {
-                    //     print!("{}, ", hash);
-                    // }
-                    // println!("");
-                    // println!("Was there a collision?: {}", collision);
-                    // println!("spin count: {}", spin_count);
-                    // panic!("INVALID INVALID INVALIDDDDDD!!!!!!")
-                    println!("Invalid spin chain produced");
-                }
-                
-    
+
+                is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
+
             }
+
             spin_chain_vec.push(spin_chain);
             is_chain_valid = false;
         }
 
         if do_print_chains {
-            println!("SPINS");
-            for spin_chain in &spin_chain_vec {
-                for spin in spin_chain.chain {
-                    print!("{}, ",spin);
-                }
-                println!("");
-                println!("____");
-            }
+           print_chains(&spin_chain_vec)
         }
 
         if _i == 1 {
-            println!("SPIN CHAIN CHECK: ");
+            println!("SPIN CHAIN SPINS: ");
         }
     
         accumulate_spins_in_chain(&spin_chain_vec);
 
+    }
+    if count_degen_chains {
+        print_degen_counts(&hash_chain_map);
+    }
+}
+
+/// A function to verify that a chain is well formed. That is that the net spin across the chain is zero.
+pub fn verify_chain(spin_chain: &SpinChain<CHAIN_SIZE>, hash_chain_map: &mut HashMap<u64, (u128,[i8;CHAIN_SIZE])>, count_degen_chains: bool) -> bool {
+
+    let mut is_chain_valid = false;
+    let mut spin_count = 0;
+    let mut _size = 0;
+    for spin in spin_chain.chain {
+        _size += 1;
+        spin_count = spin + spin_count; 
+    }
+
+    if spin_count == 0{
+        is_chain_valid = true;
+        if count_degen_chains {
+            let collision_count = hash_chain_map.entry(spin_chain.chain_hash).or_insert((1, spin_chain.chain));
+            collision_count.0 += 1;
+        }
+    } else {
+        println!("Invalid spin chain produced");
+    }
+
+    is_chain_valid
+
+}
+
+/// A function that will print the spins in a chain. (Probably not necessary since I can use {:?} formatter for arrays)
+pub fn print_chains(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
+
+    println!("SPINS");
+    for spin_chain in spin_chain_vec {
+        for spin in spin_chain.chain {
+            print!("{}, ",spin);
+        }
+        println!("");
+        println!("____");
+    }
+    
+}
+
+/// A function that iterates through the hash_chain_map and prints the relevant information
+/// for degenerate chain creation.
+pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE])>) {
+    println!("There were a total of {} unique chains generated", hash_chain_map.len());
+    for key_value_pair in hash_chain_map {
+        println!("Hash: {} was generated {} times for chain {:?}", key_value_pair.0, key_value_pair.1.0, key_value_pair.1.1);
     }
 }
 
@@ -133,7 +155,6 @@ impl<const N: usize> SpinChain<N> {
 
             let current_index: u32 = i.try_into().expect("could not make index into u32");
             let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
-            // println!("prob_up: {}", prob_up);
             
             let is_up_spin = determine_next_spin(prob_up, 10002);
 
@@ -144,7 +165,6 @@ impl<const N: usize> SpinChain<N> {
                 chain[i] = -1;
                 height -= 1;
             }
-            // println!("Height: {}", height);
         }
         chain
     }     
@@ -180,9 +200,6 @@ fn determine_next_spin(prob_up: f64, trials: u128) -> bool {
             down_spin +=1;
         }
     }
-
-    // println!("up_spin: {}", up_spin);
-    // println!("down_spin: {}", down_spin);
 
     return up_spin > down_spin;
 }
