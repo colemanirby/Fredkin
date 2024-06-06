@@ -8,12 +8,12 @@ const CHAIN_SIZE:usize = 32;
 fn main() {
     // These should be command line arguments
     let number_of_chains = 100;
-    let number_of_generations = 10;
+    let number_of_generations = 1;
     let do_print_chains = false;
     let count_degen_chains = true;
     //
 
-    let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE])> = HashMap::new();
+    let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
 
     for _i in 1..=number_of_generations{
         let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
@@ -51,74 +51,12 @@ fn main() {
     }
 }
 
-/// A function to verify that a chain is well formed. That is that the net spin across the chain is zero.
-pub fn verify_chain(spin_chain: &SpinChain<CHAIN_SIZE>, hash_chain_map: &mut HashMap<u64, (u128,[i8;CHAIN_SIZE])>, count_degen_chains: bool) -> bool {
-
-    let mut is_chain_valid = false;
-    let mut spin_count = 0;
-    let mut _size = 0;
-    for spin in spin_chain.chain {
-        _size += 1;
-        spin_count = spin + spin_count; 
-    }
-
-    if spin_count == 0{
-        is_chain_valid = true;
-        if count_degen_chains {
-            let collision_count = hash_chain_map.entry(spin_chain.chain_hash).or_insert((1, spin_chain.chain));
-            collision_count.0 += 1;
-        }
-    } else {
-        println!("Invalid spin chain produced");
-    }
-
-    is_chain_valid
-
-}
-
-/// A function that will print the spins in a chain. (Probably not necessary since I can use {:?} formatter for arrays)
-pub fn print_chains(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
-
-    println!("SPINS");
-    for spin_chain in spin_chain_vec {
-        for spin in spin_chain.chain {
-            print!("{}, ",spin);
-        }
-        println!("");
-        println!("____");
-    }
-    
-}
-
-/// A function that iterates through the hash_chain_map and prints the relevant information
-/// for degenerate chain creation.
-pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE])>) {
-    println!("There were a total of {} unique chains generated", hash_chain_map.len());
-    for key_value_pair in hash_chain_map {
-        println!("Hash: {} was generated {} times for chain {:?}", key_value_pair.0, key_value_pair.1.0, key_value_pair.1.1);
-    }
-}
-
-/// A method that iterates through the collection of generated spin chains.
-/// It sums spins at the same site in each chain to see what the "net" spin is.
-/// Say the chain is of length 20 and this method returns that for index i there is a 20,
-/// this means that every chain generated had an up spin at this position.
-pub fn accumulate_spins_in_chain(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
-    let mut spin_accum_array = [0;CHAIN_SIZE];
-
-    for i in 0..spin_chain_vec.len() {
-        let spin_chain = spin_chain_vec[i].chain;
-        for j in 0..spin_chain.len(){
-            spin_accum_array[j] += spin_chain[j];
-        }
-    }
-    println!("{:?}", spin_accum_array);
-}
 
 // Spin chain struct
 pub struct SpinChain<const N: usize> {
     pub chain: [i8;N],
-    pub chain_hash: u64
+    pub chain_hash: u64,
+    pub chain_bond_rep: [char; N]
 }
 
 /// Creates a Spin Chain based on "height above horizon".
@@ -131,16 +69,19 @@ impl<const N: usize> SpinChain<N> {
 
     pub fn new_empty() -> Self {
         let chain = [0;N];
+        // let chain_bond_rep: [String; N] = 
+        let chain_bond_rep: [char; N] = [' '; N];
         let chain_hash = 0;
-        SpinChain { chain, chain_hash }
+        SpinChain { chain, chain_hash, chain_bond_rep }
     }
 
     pub fn new() -> Self {
         let mut hasher = DefaultHasher::new();
         let chain = SpinChain::construct_chain();
+        let chain_bond_rep = SpinChain::construct_bond_rep(chain);
         chain.hash(&mut hasher);
         let chain_hash = hasher.finish();
-        SpinChain { chain, chain_hash }
+        SpinChain { chain, chain_hash, chain_bond_rep }
     }
 
     fn construct_chain() -> [i8;N] {
@@ -167,7 +108,95 @@ impl<const N: usize> SpinChain<N> {
             }
         }
         chain
-    }     
+    }
+
+    /// Temporary function that needs to be re-written
+    fn construct_bond_rep(chain: [i8;N]) -> [char;N] {
+
+        let mut chain_rep : [char;N] = [' '; N];
+
+       for i in 0..chain.len() {
+        if chain[i] == 1 {
+            chain_rep[i] = '(';
+        } else {
+            chain_rep[i] = ')';
+        }
+       }
+
+       chain_rep
+
+    }
+
+}
+
+
+/// A function to verify that a chain is well formed. That is that the net spin across the chain is zero.
+pub fn verify_chain(spin_chain: &SpinChain<CHAIN_SIZE>, hash_chain_map: &mut HashMap<u64, (u128,[i8;CHAIN_SIZE],[char;CHAIN_SIZE])>, count_degen_chains: bool) -> bool {
+
+    let mut is_chain_valid = false;
+    let mut spin_count = 0;
+    let mut _size = 0;
+    for spin in spin_chain.chain {
+        _size += 1;
+        spin_count = spin + spin_count; 
+    }
+
+    if spin_count == 0{
+        is_chain_valid = true;
+        if count_degen_chains {
+            let collision_count = hash_chain_map.entry(spin_chain.chain_hash).or_insert((1, spin_chain.chain, spin_chain.chain_bond_rep));
+            collision_count.0 += 1;
+        }
+    } else {
+        println!("Invalid spin chain produced");
+    }
+
+    is_chain_valid
+
+}
+
+/// A function that will print the spins in a chain. (Probably not necessary since I can use {:?} formatter for arrays)
+pub fn print_chains(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
+
+    println!("SPINS");
+    for spin_chain in spin_chain_vec {
+        for spin in spin_chain.chain {
+            print!("{}, ",spin);
+        }
+        println!("");
+        println!("____");
+    }
+    
+}
+
+/// A function that iterates through the hash_chain_map and prints the relevant information
+/// for degenerate chain creation.
+pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE],[char;CHAIN_SIZE])>) {
+    println!("There were a total of {} unique chains generated", hash_chain_map.len());
+    for key_value_pair in hash_chain_map {
+        println!("Bond Rep:");
+        for character in key_value_pair.1.2 {
+            print!("{}", character)
+        }
+        println!("");
+        println!("Hash: {} was generated {} times for chain {:?}", key_value_pair.0, key_value_pair.1.0, key_value_pair.1.1);
+    }
+}
+
+/// A method that iterates through the collection of generated spin chains.
+/// It sums spins at the same site in each chain to see what the "net" spin is.
+/// Say the chain is of length 20 and this method returns that for index i there is a 20,
+/// this means that every chain generated had an up spin at this position.
+pub fn accumulate_spins_in_chain(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
+    let mut spin_accum_array = [0;CHAIN_SIZE];
+
+    for i in 0..spin_chain_vec.len() {
+        let spin_chain = spin_chain_vec[i].chain;
+        for j in 0..spin_chain.len(){
+            spin_accum_array[j] += spin_chain[j];
+        }
+    }
+    println!("{:?}", spin_accum_array);
 }
 
 /// Calculates the probability of next spin being up. Based on Eq. 10
