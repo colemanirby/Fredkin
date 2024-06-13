@@ -9,24 +9,39 @@ fn main() {
     let number_of_generations = 1;
     let do_print_chains = false;
     let count_degen_chains = true;
+    let calculate_diffs = true;
     //
 
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
+    let mut unique_spin_chains:  Vec<[i8; CHAIN_SIZE]> = Vec::new();
 
     for _i in 1..=number_of_generations{
         let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
         let mut is_chain_valid: bool = false;
         for _j in 0..number_of_chains {
             let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
+            let mut is_unique = false;
     
             while !is_chain_valid {
+                is_unique = false;
 
                 spin_chain = SpinChain::new();
 
                 let mut _size = 0;
 
+                if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
+                    println!("UNIQUE");
+                    is_unique = true;
+                }
+
                 is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
 
+            }
+
+            if is_unique {
+                println!("PUSHING CHAIN");
+                unique_spin_chains.push(spin_chain.chain);
+                println!("VEC LENGTH: {}", unique_spin_chains.len());
             }
 
             spin_chain_vec.push(spin_chain);
@@ -46,6 +61,17 @@ fn main() {
     }
     if count_degen_chains {
         print_degen_counts(&hash_chain_map);
+    }
+
+    if calculate_diffs {
+        for i in 0..unique_spin_chains.len() {
+            let spin_chain_1 = unique_spin_chains.get(i).unwrap();
+            for j in i+1..unique_spin_chains.len() - 1 {
+                let spin_chain_2 = unique_spin_chains.get(j).unwrap();
+                calculate_sums_of_products(spin_chain_1, spin_chain_2)
+            }
+        }
+        
     }
 }
 
@@ -117,7 +143,7 @@ pub fn accumulate_spins_in_chain(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
     }
     println!("{:?}", spin_accum_array);
 }
-pub fn calculate_sums_of_products(spin_chain_1: [i8;CHAIN_SIZE], spin_chain_2: [i8;CHAIN_SIZE]) -> i128 {
+pub fn calculate_sums_of_products(spin_chain_1: &[i8;CHAIN_SIZE], spin_chain_2: &[i8;CHAIN_SIZE]) {
     let mut spin_vector:Vec<i128> = Vec::new();
     let mut spin_1:i128;
     let mut spin_2:i128;
@@ -125,7 +151,7 @@ pub fn calculate_sums_of_products(spin_chain_1: [i8;CHAIN_SIZE], spin_chain_2: [
     for i in 0..CHAIN_SIZE {
         spin_1 = spin_chain_1[i].try_into().expect("could not convert i8 to i128 spin_1");
         spin_2 = spin_chain_2[i].try_into().expect("could not convert i8 to i128 spin_1");
-        spin_vector[i] = spin_1*spin_2;
+        spin_vector.push(spin_1*spin_2);
     }
 
     let mut sum_of_products:i128 = 0;
@@ -134,5 +160,9 @@ pub fn calculate_sums_of_products(spin_chain_1: [i8;CHAIN_SIZE], spin_chain_2: [
         sum_of_products += spin;
     }
 
-    sum_of_products
+    println!("difference between {:?}", spin_chain_1);
+    println!("and");
+    println!("{:?}", spin_chain_2);
+    println!("is {}", sum_of_products);
+
 }

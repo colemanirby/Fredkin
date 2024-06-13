@@ -47,7 +47,7 @@ impl<const N: usize> SpinChain<N> {
             let current_index: u32 = i.try_into().expect("could not make index into u32");
             let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
             
-            let is_up_spin = determine_next_spin(prob_up, 10002);
+            let is_up_spin = determine_next_spin(prob_up, 15);
 
             if is_up_spin {
                 chain[i] = 1;
