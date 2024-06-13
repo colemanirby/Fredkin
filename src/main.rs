@@ -117,3 +117,22 @@ pub fn accumulate_spins_in_chain(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
     }
     println!("{:?}", spin_accum_array);
 }
+pub fn calculate_sums_of_products(spin_chain_1: [i8;CHAIN_SIZE], spin_chain_2: [i8;CHAIN_SIZE]) -> i128 {
+    let mut spin_vector:Vec<i128> = Vec::new();
+    let mut spin_1:i128;
+    let mut spin_2:i128;
+
+    for i in 0..CHAIN_SIZE {
+        spin_1 = spin_chain_1[i].try_into().expect("could not convert i8 to i128 spin_1");
+        spin_2 = spin_chain_2[i].try_into().expect("could not convert i8 to i128 spin_1");
+        spin_vector[i] = spin_1*spin_2;
+    }
+
+    let mut sum_of_products:i128 = 0;
+
+    for spin in spin_vector {
+        sum_of_products += spin;
+    }
+
+    sum_of_products
+}
