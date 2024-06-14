@@ -68,7 +68,7 @@ fn main() {
             let spin_chain_1 = unique_spin_chains.get(i).unwrap();
             for j in i+1..unique_spin_chains.len() - 1 {
                 let spin_chain_2 = unique_spin_chains.get(j).unwrap();
-                calculate_sums_of_products(spin_chain_1, spin_chain_2)
+                calculate_inner_product(spin_chain_1, spin_chain_2)
             }
         }
         
