@@ -1,8 +1,20 @@
 use std::collections::HashMap;
 use spin_chain::SpinChain;
+use calculation_utils::*;
+use num_complex::Complex;
 mod spin_chain;
+mod calculation_utils;
 
 const CHAIN_SIZE:usize = 32;
+const IM:Complex<i32> = Complex::new(0,1);
+const NEG_IM:Complex<i32> = Complex::new(0, -1);
+
+const SIG_Z:  [[i8; 2];2] = [[1, 0],
+                             [0,-1]];
+const SIG_Y: [[Complex<i32>;2];2] = [[Complex::new(0,0), NEG_IM],
+                                     [IM, Complex::new(0,0)]];
+const SIG_X: [[i8; 2];2] = [[0,1],
+                            [1,0]];
 fn main() {
     // These should be command line arguments
     let number_of_chains = 100;
@@ -12,6 +24,11 @@ fn main() {
     let calculate_diffs = true;
     //
 
+    // a map that keeps track of how many unique chains have been genearted, their bond representation, how many times
+    // the chain has been generated. 
+    //Key: hash of chain
+    //tuple:         0                                 1                                 2
+    //(# of times generated, spin chain rep: [1,1,-1,1...,-1-1,-1], bond representation:[(,(,...,(,),),)] )
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
     let mut unique_spin_chains:  Vec<[i8; CHAIN_SIZE]> = Vec::new();
 
@@ -68,7 +85,7 @@ fn main() {
             let spin_chain_1 = unique_spin_chains.get(i).unwrap();
             for j in i+1..unique_spin_chains.len() - 1 {
                 let spin_chain_2 = unique_spin_chains.get(j).unwrap();
-                calculate_inner_product(spin_chain_1, spin_chain_2)
+                calculate_inner_product::<CHAIN_SIZE>(spin_chain_1, spin_chain_2);
             }
         }
         
@@ -144,27 +161,47 @@ pub fn accumulate_spins_in_chain(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
     println!("{:?}", spin_accum_array);
 }
 
-/// Calculates the inner product <psi_2|psi_1>
-pub fn calculate_inner_product(spin_chain_1: &[i8;CHAIN_SIZE], spin_chain_2: &[i8;CHAIN_SIZE]) {
-    let mut spin_vector:Vec<i128> = Vec::new();
-    let mut spin_1:i128;
-    let mut spin_2:i128;
+/// Function to build the Hamiltonian for a given Fredkin Spin Chain as described in
+/// Eq. 6 in arXiv:1805.00532
+pub fn build_hamiltonian(spin_chain: &[i8;CHAIN_SIZE]) {
+    // H = sum i = 3 to N-2 F_i + P_2,3 + (D_2 D_3)/2 + P_N-2,N-1 + (U_N-2 U_N-1)/2
+    // F_i = (U_i-1 P_i,i+1) + (P_i-1 D_i+1)
 
-    for i in 0..CHAIN_SIZE {
-        spin_1 = spin_chain_1[i].try_into().expect("could not convert i8 to i128 spin_1");
-        spin_2 = spin_chain_2[i].try_into().expect("could not convert i8 to i128 spin_2");
-        spin_vector.push(spin_1*spin_2);
+    for i in 3..spin_chain.len() - 1 {
+
+        println!("{}",i);
+
     }
 
-    let mut sum_of_products:i128 = 0;
 
-    for spin in spin_vector {
-        sum_of_products += spin;
-    }
+}
 
-    println!("difference between {:?}", spin_chain_1);
-    println!("and");
-    println!("{:?}", spin_chain_2);
-    println!("is {}", sum_of_products);
+pub fn build_fredkin_op(site:usize) {
+
+    build_projection_matrix(site);
+    build_spin_up_matrix(site - 1);
+    build_projection_matrix(site-1);
+    build_spin_down_matrix(site + 1);
+
+}
+
+///P_i,i+1= 1/4 (I - sig_i dot sig_i+1) where sig = (sig_x, sig_y, sig_z)
+pub fn build_projection_matrix(site:usize) {
+    let next_site = site + 1;
+
+}
+
+///D_i = 1/2 (I - sig_i_z)
+pub fn build_spin_down_matrix(site:usize) {
+
+}
+
+///U_i = 1/2 (I + sig_i_z)
+pub fn build_spin_up_matrix(site:usize) {
+
+}
+
+/// square matrix multiplication AB
+pub fn square_matrix_mul(A: Vec<Vec<i32>>, B:Vec<Vec<i32>>) {
 
 }
