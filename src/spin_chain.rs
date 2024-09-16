@@ -60,6 +60,53 @@ impl<const N: usize> SpinChain<N> {
         chain
     }
 
+    // need to add new_excited() chain generation. This can be done by passing in an array of numbers 
+    //   0    1        2
+    // upup downup downdown
+    // so if we did something like new_excited([0], [1])
+    // we say build me an excited chain that has 1 excited bond of the form "upup"
+    // similarly ([0], [2])
+    // build excited chian with 2 excited bonds of the form "upup"
+    // and ([0,1], [1,1])
+    // build excited chain with one upup and one downup
+    // ([0,1], [2,1])
+    // add two excited upup bonds and one downup bond etc.
+    // reject a new_excited call if len(excited_array)!= len(number_of_exc_array)
+    // allow user to specify the order they would like the bond to be placed ie [0,1] 
+    // will do the upup first then the downup wherea [1,0] will do downup then upup
+    // with N total sites (where N = 2n)(N-2 that can be changed) we need to make sure that the sum of the excited states
+    // is <= N-2
+
+    pub fn new_excited(excited_bond_array: Vec<i8>, number_of_bonds: Vec<i8>) -> Self {
+
+        let number_of_excitations = SpinChain::<N>::validate_excited_sites(number_of_bonds);
+
+        
+
+        // Validation should have been successful, now we choose where to place the bonds
+        
+
+        return SpinChain::new_empty();
+    }
+
+    fn validate_excited_sites(number_of_bonds: Vec<i8>) -> usize {
+
+        let size_of_chain = N-2;
+        let mut sum_number_of_exc_bonds:usize = 0;
+        for entry in number_of_bonds {
+
+            sum_number_of_exc_bonds += entry as usize;
+        }
+
+        if sum_number_of_exc_bonds > size_of_chain {
+            panic!("Number of excited bonds exceeded the size of the chain.")
+        }
+
+        return sum_number_of_exc_bonds;
+
+    }
+
+
     /// Temporary function that needs to be re-written
     fn construct_bond_rep(chain: [i8;N]) -> [char;N] {
 
