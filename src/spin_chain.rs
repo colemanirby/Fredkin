@@ -1,6 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use rand::Rng;
+use rand::{random, Rng};
 use rand::prelude::ThreadRng;
 // Spin chain struct
 pub struct SpinChain<const N: usize> {
@@ -77,32 +77,80 @@ impl<const N: usize> SpinChain<N> {
     // with N total sites (where N = 2n)(N-2 that can be changed) we need to make sure that the sum of the excited states
     // is <= N-2
 
-    pub fn new_excited(excited_bond_array: Vec<i8>, number_of_bonds: Vec<i8>) -> Self {
+    /// A function for generating a spin chain with excited bonds
+    /// 
+    /// * 'excited_bond_array': A vec that contains 0, 1, 2, or 3 which represents the types of excited bonds. Can have 4 entries total.
+    /// * 'number_of_bonds': A vec that contains the number of each type of excited bond that is wanted. It should have the same number of entries as excited_bond_array where each number corresponds to how many of each type
+    ///    of bond is wanted.
 
-        let number_of_excitations = SpinChain::<N>::validate_excited_sites(number_of_bonds);
+    pub fn new_excited(excited_bond_array: &Vec<i8>, number_of_bonds: &Vec<i8>) -> Self {
+
+        if excited_bond_array.len() > 1 {
+            panic!("Too many arguments supplied. Multiple excited bond types not supported");
+        }
+
+        if *excited_bond_array.get(0).unwrap()!= 0 {
+            panic!("Excited bonds that are not canted are currently not supported.")
+        }
+
+        if number_of_bonds.len() > 1 {
+
+            panic!("Multiple excited bond types not supported")
+        }
+
+        if *number_of_bonds.get(0).unwrap()!=1 {
+            panic!("Multiple excited bonds is not currently supported");
+        }
+
+        let total_number_of_excited_bonds = SpinChain::<N>::validate_excited_sites(number_of_bonds);
+        let number_of_excited_sites = 2 * total_number_of_excited_bonds;
+
+
+        //Back of envelope:
+        // N = total number of excited bonds
+        // N = 0 : (0) <- Not applicable
+        // N = 1 : (1) [(2)] (3) or (1) [] (2) <- excited bonds don't necessarily have to have a Dyck word within them
+        // N = 2 : (1) [(2)] {(3)} (4)
+        // let potential_num_of_dyck_words = total_number_of_excited_bonds + 2;
+ 
+        let random_site_vec: Vec<i8> = Vec::new();
+
+        for i in 1..number_of_excited_sites - 1 { 
+
+
+
+        }
 
         
 
         // Validation should have been successful, now we choose where to place the bonds
+        // In the S_tot^z = 1 sector we have that the bonds should have the form
+        // (...)[_i (...) ]_j (...)
         
 
         return SpinChain::new_empty();
     }
 
-    fn validate_excited_sites(number_of_bonds: Vec<i8>) -> usize {
+    fn validate_excited_sites(number_of_bonds: &Vec<i8>) -> usize {
 
-        let size_of_chain = N-2;
-        let mut sum_number_of_exc_bonds:usize = 0;
+        // the number of available sites is N-2 since the leftmost and rightmost
+        // sites cannot be changed
+        let available_sites = N-2;
+        let mut total_number_of_excited_bonds:usize = 0;
         for entry in number_of_bonds {
 
-            sum_number_of_exc_bonds += entry as usize;
+            total_number_of_excited_bonds += *entry as usize;
         }
 
-        if sum_number_of_exc_bonds > size_of_chain {
-            panic!("Number of excited bonds exceeded the size of the chain.")
+        // above we simply find out how many exicted bonds we want. We need to multiply this by 2 
+        // since each bond occupies 2 sites.
+        let num_of_excited_sites = 2 * total_number_of_excited_bonds;
+
+        if num_of_excited_sites > available_sites {
+            panic!("The number of sites needed for excited bonds exceeded the number of available sites.");
         }
 
-        return sum_number_of_exc_bonds;
+        total_number_of_excited_bonds
 
     }
 
