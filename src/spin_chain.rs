@@ -1,4 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use rand::{random, Rng};
 use rand::prelude::ThreadRng;
@@ -79,59 +82,55 @@ impl<const N: usize> SpinChain<N> {
 
     /// A function for generating a spin chain with excited bonds
     /// 
-    /// * 'excited_bond_array': A vec that contains 0, 1, 2, or 3 which represents the types of excited bonds. Can have 4 entries total.
-    /// * 'number_of_bonds': A vec that contains the number of each type of excited bond that is wanted. It should have the same number of entries as excited_bond_array where each number corresponds to how many of each type
-    ///    of bond is wanted.
+    /// * 'excited_bond_map': A hashmap that contains 3 key-value pairs. The keys are 0,1,2 for up-canted, down-canted, and mismatch bond types. 
 
-    pub fn new_excited(excited_bond_array: &Vec<i8>, number_of_bonds: &Vec<i8>) -> Self {
+    pub fn new_excited(excited_bond_map: &HashMap<i8, i8>) -> Self {
 
-        if excited_bond_array.len() > 1 {
-            panic!("Too many arguments supplied. Multiple excited bond types not supported");
+        let mut rng = rand::thread_rng();
+
+        if excited_bond_map.len() < 3 {
+            panic!("Not enough arguments supplied! Must have entries with keys 0, 1, 2");
         }
 
-        if *excited_bond_array.get(0).unwrap()!= 0 {
-            panic!("Excited bonds that are not canted are currently not supported.")
+        if excited_bond_map.len() > 3 {
+            panic!("Too many arguments supplied! Must only have entries with keys 0, 1, 2");
         }
 
-        if number_of_bonds.len() > 1 {
-
-            panic!("Multiple excited bond types not supported")
-        }
-
-        if *number_of_bonds.get(0).unwrap()!=1 {
-            panic!("Multiple excited bonds is not currently supported");
-        }
-
-        let total_number_of_excited_bonds = SpinChain::<N>::validate_excited_sites(number_of_bonds);
+        let total_number_of_excited_bonds = SpinChain::<N>::validate_excited_sites(excited_bond_map);
         let number_of_excited_sites = 2 * total_number_of_excited_bonds;
-
-
-        //Back of envelope:
-        // N = total number of excited bonds
-        // N = 0 : (0) <- Not applicable
-        // N = 1 : (1) [(2)] (3) or (1) [] (2) <- excited bonds don't necessarily have to have a Dyck word within them
-        // N = 2 : (1) [(2)] {(3)} (4)
-        // let potential_num_of_dyck_words = total_number_of_excited_bonds + 2;
- 
-        let random_site_vec: Vec<i8> = Vec::new();
-
-        for i in 1..number_of_excited_sites - 1 { 
-
-
-
-        }
-
-        
 
         // Validation should have been successful, now we choose where to place the bonds
         // In the S_tot^z = 1 sector we have that the bonds should have the form
         // (...)[_i (...) ]_j (...)
+
+        let number_of_up_cant_sites = 2 * (*excited_bond_map.get(&0).unwrap());
+        let number_of_down_cant_sites = 2 * (*excited_bond_map.get(&1).unwrap());
+        let number_of_mismatch_sites = 2 * (*excited_bond_map.get(&2).unwrap());
+
+        let mut excited_site_indices = BTreeMap::<i8, i8>::new();
+
+        // First, we populate the up_cant sites. This is fairly straightforward since all indices come in pairs meaning that
+        // by default they will not be embedded within another up-canted bond.
+        SpinChain::<N>::populate_up_cant_site_indices(&mut excited_site_indices, number_of_up_cant_sites);
+
+        // These next two will be more difficult since we have added restrictions:
+        // 1. We cannot embed these bonds inside of other excited bonds
+        // SpinChain::<N>::populate_down_cant_site_indices(&mut excited_site_indices, number_of_down_cant_sites);
+        // Thes bonds can be embedded within eachother, but cannot be embedded within up/down-canted bonds
+        // SpinChain::<N>::populate_mismatch_site_indices(&mut excited_site_indices, number_of_mismatch_sites);
+
+
+
+
+        
+
+
         
 
         return SpinChain::new_empty();
     }
 
-    fn validate_excited_sites(number_of_bonds: &Vec<i8>) -> usize {
+    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) -> usize {
 
         // the number of available sites is N-2 since the leftmost and rightmost
         // sites cannot be changed
@@ -139,7 +138,7 @@ impl<const N: usize> SpinChain<N> {
         let mut total_number_of_excited_bonds:usize = 0;
         for entry in number_of_bonds {
 
-            total_number_of_excited_bonds += *entry as usize;
+            total_number_of_excited_bonds += *entry.1 as usize;
         }
 
         // above we simply find out how many exicted bonds we want. We need to multiply this by 2 
@@ -147,11 +146,77 @@ impl<const N: usize> SpinChain<N> {
         let num_of_excited_sites = 2 * total_number_of_excited_bonds;
 
         if num_of_excited_sites > available_sites {
-            panic!("The number of sites needed for excited bonds exceeded the number of available sites.");
+            panic!("The number of sites needed for excited bonds exceeded the number of available sites in the chain. excited sites: {}, size of chain: {}", num_of_excited_sites, N);
         }
 
         total_number_of_excited_bonds
 
+    }
+
+
+    fn populate_up_cant_site_indices(excited_site_indices: &mut BTreeMap<i8, i8>, number_of_up_cant_sites: i8) {
+
+        let mut rng = rand::thread_rng();
+
+        let mut count = 0;
+
+        // Choose indices that will have an up-canted spin
+        while count < number_of_up_cant_sites {
+
+            // N is the size of the chain, but the indices will end on N-1
+            // Do not want to include the 2 right most spins in this part of the generation
+            let random_site_index = rng.gen_range(0..N-2) as i8;
+                if !excited_site_indices.contains_key(&random_site_index) {
+                    excited_site_indices.insert(random_site_index, 0);
+                    count+=1;
+                }
+        }
+
+        // Now that indices have been chosen, we need to validate
+        let indices = Vec::from_iter(excited_site_indices.keys());
+        let mut bad_indices = Vec::<i8>::new();
+
+        let mut index = 1;
+
+        // loop over pairs to make sure that they have proper spacing in the random sequence
+        while index < indices.len() {
+            let first_index = **indices.get(index-1).unwrap();
+            let second_index = **indices.get(index).unwrap();
+            let spacing = second_index - first_index - 1;
+
+            // Check for the special condition that the first index is 1, this implies
+            // that we have an up canted bond directly next to the right edge which is
+            // not allowed. If we have first_index = 0 then second_index has the possibility of being
+            // 1 which is fine.
+            if spacing %2 != 0 || first_index == 1{
+                bad_indices.push(first_index);
+                bad_indices.push(second_index);
+            }
+            index += 2;
+        }
+
+        let needed_new_cant_sites = bad_indices.len() as i8;
+
+        // If we found pairs that are not properly spaced, we will remove them from our map (In this case we are looking for things that 
+        // will cause broken Dyck word issues such as: [(])
+        if needed_new_cant_sites != 0 {
+            
+            for entry in bad_indices {
+                excited_site_indices.remove_entry(&entry);
+            }
+
+            SpinChain::<N>::populate_up_cant_site_indices(excited_site_indices, needed_new_cant_sites);
+        }
+    
+    
+    }
+    
+    fn populate_down_cant_site_indices(excited_site_indices:  &BTreeMap<i8, i8>, number_of_down_cant_sites: i8) {
+    
+    }
+    
+    fn populate_mismatch_site_indices(excited_site_indices:  &BTreeMap<i8, i8>, number_of_mismatch_sites: i8) {
+    
     }
 
 
@@ -173,6 +238,7 @@ impl<const N: usize> SpinChain<N> {
     }
 
 }
+
 
 
 /// Calculates the probability of next spin being up. Based on Eq. 10
