@@ -107,6 +107,10 @@ impl<const N: usize> SpinChain<N> {
         let number_of_down_cant_sites = 2 * (*excited_bond_map.get(&1).unwrap());
         let number_of_mismatch_sites = 2 * (*excited_bond_map.get(&2).unwrap());
 
+
+        // Nice property of BTreeMap is that it will keep keys in a specific order
+        // example: doing insert(10, 20) followed by insert (2, 15) will have the
+        // entries stored in the order (2, 15), (10, 20)
         let mut excited_site_indices = BTreeMap::<i8, i8>::new();
 
         // First, we populate the up_cant sites. This is fairly straightforward since all indices come in pairs meaning that
