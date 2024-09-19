@@ -63,6 +63,116 @@ impl<const N: usize> SpinChain<N> {
         chain
     }
 
+    // up_cant = 2, down_cant = 3, mismatch = 4
+    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<i8, i8>) {
+
+        let mut chain = [0;N];
+        chain[0] = 1;
+        chain[N-1] = -1;
+        let chain_size: u32 = chain.len().try_into().expect("Could not turn usize into u32");
+        
+        // for excited chains, height above/below the horizon no longer matters. We just need to make 
+        // proper Dyck words in between the excited sites.
+        let first_excited_bond_position = *excited_site_indices.first_entry().unwrap().get();        
+
+        SpinChain::<N>::populate_left_side_of_chain(&mut chain, first_excited_bond_position);
+
+        let mut current_height: u32 = 0;
+
+        let excited_indices = Vec::from_iter(excited_site_indices.keys());
+
+        let mut index = 1;
+
+        while index < excited_indices.len() {
+            let left_bound = *excited_indices.get(index-1).unwrap();
+            let left_bound_index = *left_bound as usize;
+            let right_bound = *excited_indices.get(index).unwrap();
+            let right_bound_index = *right_bound as usize;
+            chain[left_bound_index] = *excited_site_indices.get(left_bound).unwrap();
+            chain[right_bound_index] = *excited_site_indices.get(right_bound).unwrap();
+
+            let mut height = 0;
+            for i in left_bound_index+1..right_bound_index {
+
+                let current_index: u32 = i.try_into().expect("could not make index into u32");
+                let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
+            
+                let is_up_spin = determine_next_spin(prob_up, 15);
+
+                let index = i as usize;
+
+                if is_up_spin {
+                    chain[index] = 1;
+                    height += 1;
+                } else {
+                    chain[index] = -1;
+                    height -= 1;
+                }
+            }
+
+            index += 2;
+        }
+
+        
+        let last_excited_bond_position = *excited_site_indices.last_entry().unwrap().get() as usize;
+
+        let mut height = 0;
+
+        if last_excited_bond_position != N-1 {
+
+            for i in last_excited_bond_position+1..N {
+                let current_index: u32 = i.try_into().expect("could not make index into u32");
+                let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
+            
+                let is_up_spin = determine_next_spin(prob_up, 15);
+
+                let index = i as usize;
+
+                if is_up_spin {
+                    chain[index] = 1;
+                    height += 1;
+                } else {
+                    chain[index] = -1;
+                    height -= 1;
+                }
+
+            }
+        }
+
+        
+    }
+
+    fn populate_left_side_of_chain(chain: &mut [i8;N], first_excited_bond_position: i8) -> &mut [i8;N] {
+        if first_excited_bond_position == 0 {
+            chain[0] = 2;
+        }
+
+        let mut height = 0;
+        let chain_size = first_excited_bond_position as u32;
+
+        // time to make proper dyck words here
+        for i in 1..first_excited_bond_position {
+
+            let current_index: u32 = i.try_into().expect("could not make index into u32");
+            let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
+            
+            let is_up_spin = determine_next_spin(prob_up, 15);
+
+            let index = i as usize;
+
+            if is_up_spin {
+                chain[index] = 1;
+                height += 1;
+            } else {
+                chain[index] = -1;
+                height -= 1;
+            }
+        }
+
+        chain
+
+    }
+
     // need to add new_excited() chain generation. This can be done by passing in an array of numbers 
     //   0    1        2
     // upup downup downdown
@@ -119,6 +229,8 @@ impl<const N: usize> SpinChain<N> {
 
         // These next two will be more difficult since we have added restrictions:
         // 1. We cannot embed these bonds inside of other excited bonds
+        // NOTE: Maybe merge the up and down cant population? Can generate the indices for all of the sites, then randomly choose
+        // if up or down cant in paired sites. This will prevent embedding of bonds.
         // SpinChain::<N>::populate_down_cant_site_indices(&mut excited_site_indices, number_of_down_cant_sites);
         // Thes bonds can be embedded within eachother, but cannot be embedded within up/down-canted bonds
         // SpinChain::<N>::populate_mismatch_site_indices(&mut excited_site_indices, number_of_mismatch_sites);
@@ -171,7 +283,7 @@ impl<const N: usize> SpinChain<N> {
             // Do not want to include the 2 right most spins in this part of the generation
             let random_site_index = rng.gen_range(0..N-2) as i8;
                 if !excited_site_indices.contains_key(&random_site_index) {
-                    excited_site_indices.insert(random_site_index, 0);
+                    excited_site_indices.insert(random_site_index, 2);
                     count+=1;
                 }
         }
@@ -189,7 +301,7 @@ impl<const N: usize> SpinChain<N> {
             let spacing = second_index - first_index - 1;
 
             // Check for the special condition that the first index is 1, this implies
-            // that we have an up canted bond directly next to the right edge which is
+            // that we have an up canted bond directly next to the left edge which is
             // not allowed. If we have first_index = 0 then second_index has the possibility of being
             // 1 which is fine.
             if spacing %2 != 0 || first_index == 1{
