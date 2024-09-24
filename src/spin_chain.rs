@@ -37,143 +37,7 @@ impl<const N: usize> SpinChain<N> {
         SpinChain { chain, chain_hash, chain_bond_rep }
     }
 
-    fn construct_chain() -> [i8;N] {
-        let mut chain = [0; N];
-        chain[0] = 1;
-        chain[N-1] = -1;
-        let chain_size: u32 = chain.len().try_into().expect("Could not turn usize into u32");
-        let mut height :u32= 1;
-        
-        // "Starting" at i = 0 with an up spin -> height starts as 1;
-        for i in 1..N - 1 {
-
-            let current_index: u32 = i.try_into().expect("could not make index into u32");
-            let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
-            
-            let is_up_spin = determine_next_spin(prob_up, 15);
-
-            if is_up_spin {
-                chain[i] = 1;
-                height += 1;
-            } else {
-                chain[i] = -1;
-                height -= 1;
-            }
-        }
-        chain
-    }
-
-    // up_cant = 2, down_cant = 3, mismatch = 4
-    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<i8, i8>) {
-
-        let mut chain = [0;N];
-        chain[0] = 1;
-        chain[N-1] = -1;
-        let chain_size: u32 = chain.len().try_into().expect("Could not turn usize into u32");
-        
-        // for excited chains, height above/below the horizon no longer matters. We just need to make 
-        // proper Dyck words in between the excited sites.
-        let first_excited_bond_position = *excited_site_indices.first_entry().unwrap().get();        
-
-        SpinChain::<N>::populate_left_side_of_chain(&mut chain, first_excited_bond_position);
-
-        let mut current_height: u32 = 0;
-
-        let excited_indices = Vec::from_iter(excited_site_indices.keys());
-
-        let mut index = 1;
-
-        while index < excited_indices.len() {
-            let left_bound = *excited_indices.get(index-1).unwrap();
-            let left_bound_index = *left_bound as usize;
-            let right_bound = *excited_indices.get(index).unwrap();
-            let right_bound_index = *right_bound as usize;
-            chain[left_bound_index] = *excited_site_indices.get(left_bound).unwrap();
-            chain[right_bound_index] = *excited_site_indices.get(right_bound).unwrap();
-
-            let mut height = 0;
-            for i in left_bound_index+1..right_bound_index {
-
-                let current_index: u32 = i.try_into().expect("could not make index into u32");
-                let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
-            
-                let is_up_spin = determine_next_spin(prob_up, 15);
-
-                let index = i as usize;
-
-                if is_up_spin {
-                    chain[index] = 1;
-                    height += 1;
-                } else {
-                    chain[index] = -1;
-                    height -= 1;
-                }
-            }
-
-            index += 2;
-        }
-
-        
-        let last_excited_bond_position = *excited_site_indices.last_entry().unwrap().get() as usize;
-
-        let mut height = 0;
-
-        if last_excited_bond_position != N-1 {
-
-            for i in last_excited_bond_position+1..N {
-                let current_index: u32 = i.try_into().expect("could not make index into u32");
-                let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
-            
-                let is_up_spin = determine_next_spin(prob_up, 15);
-
-                let index = i as usize;
-
-                if is_up_spin {
-                    chain[index] = 1;
-                    height += 1;
-                } else {
-                    chain[index] = -1;
-                    height -= 1;
-                }
-
-            }
-        }
-
-        
-    }
-
-    fn populate_left_side_of_chain(chain: &mut [i8;N], first_excited_bond_position: i8) -> &mut [i8;N] {
-        if first_excited_bond_position == 0 {
-            chain[0] = 2;
-        }
-
-        let mut height = 0;
-        let chain_size = first_excited_bond_position as u32;
-
-        // time to make proper dyck words here
-        for i in 1..first_excited_bond_position {
-
-            let current_index: u32 = i.try_into().expect("could not make index into u32");
-            let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
-            
-            let is_up_spin = determine_next_spin(prob_up, 15);
-
-            let index = i as usize;
-
-            if is_up_spin {
-                chain[index] = 1;
-                height += 1;
-            } else {
-                chain[index] = -1;
-                height -= 1;
-            }
-        }
-
-        chain
-
-    }
-
-    // need to add new_excited() chain generation. This can be done by passing in an array of numbers 
+     // need to add new_excited() chain generation. This can be done by passing in an array of numbers 
     //   0    1        2
     // upup downup downdown
     // so if we did something like new_excited([0], [1])
@@ -227,6 +91,10 @@ impl<const N: usize> SpinChain<N> {
         // by default they will not be embedded within another up-canted bond.
         SpinChain::<N>::populate_up_cant_site_indices(&mut excited_site_indices, number_of_up_cant_sites);
 
+        // The sites for the spin chain have been decided and validated in the previous step. We will now populate the spin
+        // chain.
+        SpinChain::<N>::construct_excited_chain(&mut excited_site_indices);
+
         // These next two will be more difficult since we have added restrictions:
         // 1. We cannot embed these bonds inside of other excited bonds
         // NOTE: Maybe merge the up and down cant population? Can generate the indices for all of the sites, then randomly choose
@@ -245,30 +113,6 @@ impl<const N: usize> SpinChain<N> {
 
         return SpinChain::new_empty();
     }
-
-    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) -> usize {
-
-        // the number of available sites is N-2 since the leftmost and rightmost
-        // sites cannot be changed
-        let available_sites = N-2;
-        let mut total_number_of_excited_bonds:usize = 0;
-        for entry in number_of_bonds {
-
-            total_number_of_excited_bonds += *entry.1 as usize;
-        }
-
-        // above we simply find out how many exicted bonds we want. We need to multiply this by 2 
-        // since each bond occupies 2 sites.
-        let num_of_excited_sites = 2 * total_number_of_excited_bonds;
-
-        if num_of_excited_sites > available_sites {
-            panic!("The number of sites needed for excited bonds exceeded the number of available sites in the chain. excited sites: {}, size of chain: {}", num_of_excited_sites, N);
-        }
-
-        total_number_of_excited_bonds
-
-    }
-
 
     fn populate_up_cant_site_indices(excited_site_indices: &mut BTreeMap<i8, i8>, number_of_up_cant_sites: i8) {
 
@@ -326,6 +170,172 @@ impl<const N: usize> SpinChain<N> {
     
     
     }
+
+    fn construct_chain() -> [i8;N] {
+        let mut chain = [0; N];
+        chain[0] = 1;
+        chain[N-1] = -1;
+        let chain_size: u32 = chain.len().try_into().expect("Could not turn usize into u32");
+        let mut height :u32= 1;
+        
+        // "Starting" at i = 0 with an up spin -> height starts as 1;
+        for i in 1..N - 1 {
+
+            let current_index: u32 = i.try_into().expect("could not make index into u32");
+            let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
+            
+            let is_up_spin = determine_next_spin(prob_up, 15);
+
+            if is_up_spin {
+                chain[i] = 1;
+                height += 1;
+            } else {
+                chain[i] = -1;
+                height -= 1;
+            }
+        }
+        chain
+    }
+
+    // up_cant = 2, down_cant = 3, mismatch = 4
+    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<i8, i8>) {
+
+        let mut chain = [0;N];
+        chain[0] = 1;
+        chain[N-1] = -1;
+        // let chain_size: u32 = chain.len().try_into().expect("Could not turn usize into u32");
+        
+        // for excited chains, height above/below the horizon no longer matters. We just need to make 
+        // proper Dyck words in between the excited sites.
+        let first_excited_bond_position = *excited_site_indices.first_entry().unwrap().get();        
+
+        SpinChain::<N>::populate_left_side_of_chain(&mut chain, first_excited_bond_position);
+
+        let excited_indices_vec = Vec::from_iter(excited_site_indices.keys());
+
+        let mut index = 1;
+
+        while index < excited_indices_vec.len() {
+            let left_bound = *excited_indices_vec.get(index-1).unwrap();
+            let left_bound_index = *left_bound as usize;
+            let right_bound = *excited_indices_vec.get(index).unwrap();
+            let right_bound_index = *right_bound as usize;
+            let interval_size = (right_bound_index - left_bound_index - 1) as u32;
+            chain[left_bound_index] = *excited_site_indices.get(left_bound).unwrap();
+            chain[right_bound_index] = *excited_site_indices.get(right_bound).unwrap();
+
+
+
+            let mut height = 0;
+            for i in left_bound_index+1..right_bound_index {
+
+                let current_index: u32 = i.try_into().expect("could not make index into u32");
+                let prob_up = calculate_next_spin_prob(interval_size, current_index, height);
+            
+                let is_up_spin = determine_next_spin(prob_up, 15);
+
+                let index = i as usize;
+
+                if is_up_spin {
+                    chain[index] = 1;
+                    height += 1;
+                } else {
+                    chain[index] = -1;
+                    height -= 1;
+                }
+            }
+
+            index += 1;
+        }
+
+        
+        let last_excited_bond_position = *excited_site_indices.last_entry().unwrap().get() as usize;
+
+        let mut height = 0;
+
+        if last_excited_bond_position != N-1 {
+
+            let interval_size = (N - last_excited_bond_position - 1) as u32;
+
+            for i in last_excited_bond_position+1..N {
+                let current_index: u32 = i.try_into().expect("could not make index into u32");
+                let prob_up = calculate_next_spin_prob(interval_size, current_index, height);
+            
+                let is_up_spin = determine_next_spin(prob_up, 15);
+
+                let index = i as usize;
+
+                if is_up_spin {
+                    chain[index] = 1;
+                    height += 1;
+                } else {
+                    chain[index] = -1;
+                    height -= 1;
+                }
+
+            }
+        }
+
+        
+    }
+
+    fn populate_left_side_of_chain(chain: &mut [i8;N], first_excited_bond_position: i8) -> &mut [i8;N] {
+
+        let mut height = 0;
+        if first_excited_bond_position == 0 {
+            chain[0] = 2;
+            return chain;
+        } else {
+            chain[0] = 1;
+            height = 1;
+        }
+        let chain_size = first_excited_bond_position as u32;
+
+        // time to make proper dyck words here
+        for i in 1..first_excited_bond_position {
+
+            let current_index: u32 = i.try_into().expect("could not make index into u32");
+            let prob_up = calculate_next_spin_prob(chain_size, current_index, height);
+            
+            let is_up_spin = determine_next_spin(prob_up, 15);
+
+            let index = i as usize;
+
+            if is_up_spin {
+                chain[index] = 1;
+                height += 1;
+            } else {
+                chain[index] = -1;
+                height -= 1;
+            }
+        }
+
+        chain
+
+    }
+
+    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) -> usize {
+
+        // the number of available sites is N-2 since the leftmost and rightmost
+        // sites cannot be changed
+        let available_sites = N-2;
+        let mut total_number_of_excited_bonds:usize = 0;
+        for entry in number_of_bonds {
+
+            total_number_of_excited_bonds += *entry.1 as usize;
+        }
+
+        // above we simply find out how many exicted bonds we want. We need to multiply this by 2 
+        // since each bond occupies 2 sites.
+        let num_of_excited_sites = 2 * total_number_of_excited_bonds;
+
+        if num_of_excited_sites > available_sites {
+            panic!("The number of sites needed for excited bonds exceeded the number of available sites in the chain. excited sites: {}, size of chain: {}", num_of_excited_sites, N);
+        }
+
+        total_number_of_excited_bonds
+
+    }
     
     fn populate_down_cant_site_indices(excited_site_indices:  &BTreeMap<i8, i8>, number_of_down_cant_sites: i8) {
     
@@ -347,7 +357,7 @@ impl<const N: usize> SpinChain<N> {
         } else {
             chain_rep[i] = ')';
         }
-       }
+       } 
 
        chain_rep
 
