@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+use std::thread::current;
 use rand::{random, Rng};
 use rand::prelude::ThreadRng;
 // Spin chain struct
@@ -60,7 +61,7 @@ impl<const N: usize> SpinChain<N> {
 
     pub fn new_excited(excited_bond_map: &HashMap<i8, i8>) -> Self {
 
-        let mut rng = rand::thread_rng();
+        println!("Making new excited chain");
 
         if excited_bond_map.len() < 3 {
             panic!("Not enough arguments supplied! Must have entries with keys 0, 1, 2");
@@ -70,8 +71,8 @@ impl<const N: usize> SpinChain<N> {
             panic!("Too many arguments supplied! Must only have entries with keys 0, 1, 2");
         }
 
+        println!("validating map");
         let total_number_of_excited_bonds = SpinChain::<N>::validate_excited_sites(excited_bond_map);
-        let number_of_excited_sites = 2 * total_number_of_excited_bonds;
 
         // Validation should have been successful, now we choose where to place the bonds
         // In the S_tot^z = 1 sector we have that the bonds should have the form
@@ -89,11 +90,12 @@ impl<const N: usize> SpinChain<N> {
 
         // First, we populate the up_cant sites. This is fairly straightforward since all indices come in pairs meaning that
         // by default they will not be embedded within another up-canted bond.
+        println!("populating map with indices");
         SpinChain::<N>::populate_up_cant_site_indices(&mut excited_site_indices, number_of_up_cant_sites);
 
         // The sites for the spin chain have been decided and validated in the previous step. We will now populate the spin
         // chain.
-        SpinChain::<N>::construct_excited_chain(&mut excited_site_indices);
+        let chain = SpinChain::<N>::construct_excited_chain(&mut excited_site_indices);
 
         // These next two will be more difficult since we have added restrictions:
         // 1. We cannot embed these bonds inside of other excited bonds
@@ -103,15 +105,12 @@ impl<const N: usize> SpinChain<N> {
         // Thes bonds can be embedded within eachother, but cannot be embedded within up/down-canted bonds
         // SpinChain::<N>::populate_mismatch_site_indices(&mut excited_site_indices, number_of_mismatch_sites);
 
+        let mut hasher = DefaultHasher::new();
+        let chain_bond_rep = SpinChain::construct_bond_rep(chain);
+        chain.hash(&mut hasher);
+        let chain_hash = hasher.finish();
 
-
-
-        
-
-
-        
-
-        return SpinChain::new_empty();
+        SpinChain { chain, chain_hash, chain_bond_rep }
     }
 
     fn populate_up_cant_site_indices(excited_site_indices: &mut BTreeMap<i8, i8>, number_of_up_cant_sites: i8) {
@@ -198,7 +197,9 @@ impl<const N: usize> SpinChain<N> {
     }
 
     // up_cant = 2, down_cant = 3, mismatch = 4
-    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<i8, i8>) {
+    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<i8, i8>) -> [i8;N] {
+
+        println!("Construct excited chain");
 
         let mut chain = [0;N];
         chain[0] = 1;
@@ -209,6 +210,7 @@ impl<const N: usize> SpinChain<N> {
         // proper Dyck words in between the excited sites.
         let first_excited_bond_position = *excited_site_indices.first_entry().unwrap().get();        
 
+        println!("populating left side of chain");
         SpinChain::<N>::populate_left_side_of_chain(&mut chain, first_excited_bond_position);
 
         let excited_indices_vec = Vec::from_iter(excited_site_indices.keys());
@@ -264,6 +266,7 @@ impl<const N: usize> SpinChain<N> {
                 let is_up_spin = determine_next_spin(prob_up, 15);
 
                 let index = i as usize;
+                print!("FINAL: height: {}", height);
 
                 if is_up_spin {
                     chain[index] = 1;
@@ -276,6 +279,7 @@ impl<const N: usize> SpinChain<N> {
             }
         }
 
+        chain
         
     }
 
@@ -289,7 +293,7 @@ impl<const N: usize> SpinChain<N> {
             chain[0] = 1;
             height = 1;
         }
-        let chain_size = first_excited_bond_position as u32;
+        let chain_size = (first_excited_bond_position -1) as u32;
 
         // time to make proper dyck words here
         for i in 1..first_excited_bond_position {
@@ -350,11 +354,22 @@ impl<const N: usize> SpinChain<N> {
     fn construct_bond_rep(chain: [i8;N]) -> [char;N] {
 
         let mut chain_rep : [char;N] = [' '; N];
+        let mut paired = false;
 
        for i in 0..chain.len() {
         if chain[i] == 1 {
             chain_rep[i] = '(';
-        } else {
+        } else if chain[i] == 2 {
+            if !paired {
+                chain_rep[i] = '[';
+                paired = true;
+            } else {
+                chain_rep[i] = ']';
+                paired = false;
+            }
+            
+        } 
+        else {
             chain_rep[i] = ')';
         }
        } 
@@ -371,6 +386,11 @@ impl<const N: usize> SpinChain<N> {
 /// in arXiv:1805.00532
 /// Pr(z_i+1 = up) = (h_i + 2)(N - i - h_i)/[2(h_i + 1)(N - i)]
 fn calculate_next_spin_prob(length: u32, current_index: u32, height: u32) -> f64 {
+
+    println!("CACULATE:");
+    println!("length: {}", length);
+    println!("current_index: {}", current_index);
+    println!("height: {}", height);
 
     let numerator: f64 = ((height + 2) * (length - current_index - height)).try_into().expect("Could not turn u32 into f64 - numerator");
 

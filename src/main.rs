@@ -5,21 +5,13 @@ use num_complex::Complex;
 mod spin_chain;
 mod calculation_utils;
 
-const CHAIN_SIZE:usize = 32;
-const IM:Complex<i32> = Complex::new(0,1);
-const NEG_IM:Complex<i32> = Complex::new(0, -1);
+const CHAIN_SIZE:usize = 8;
 
-const SIG_Z:  [[i8; 2];2] = [[1, 0],
-                             [0,-1]];
-const SIG_Y: [[Complex<i32>;2];2] = [[Complex::new(0,0), NEG_IM],
-                                     [IM, Complex::new(0,0)]];
-const SIG_X: [[i8; 2];2] = [[0,1],
-                            [1,0]];
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 100;
+    let number_of_chains = 1;
     let number_of_generations = 1;
-    let do_print_chains = false;
+    let do_print_chains = true;
     let count_degen_chains = true;
     let calculate_diffs = true;
     //
@@ -32,28 +24,69 @@ fn main() {
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
     let mut unique_spin_chains:  Vec<[i8; CHAIN_SIZE]> = Vec::new();
 
+    // for _i in 1..=number_of_generations{
+    //     let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
+    //     let mut is_chain_valid: bool = false;
+    //     for _j in 0..number_of_chains {
+    //         let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
+    //         let mut is_unique = false;
+    
+    //         while !is_chain_valid {
+    //             is_unique = false;
+
+    //             spin_chain = SpinChain::new();
+
+    //             let mut _size = 0;
+
+    //             if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
+    //                 println!("UNIQUE");
+    //                 is_unique = true;
+    //             }
+
+    //             is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
+
+    //         }
+
+    //         if is_unique {
+    //             println!("PUSHING CHAIN");
+    //             unique_spin_chains.push(spin_chain.chain);
+    //             println!("VEC LENGTH: {}", unique_spin_chains.len());
+    //         }
+
+    //         spin_chain_vec.push(spin_chain);
+    //         is_chain_valid = false;
+    //     }
+
+    let mut excited_bond_map = HashMap::<i8,i8>::new();
+    excited_bond_map.insert(0, 1);
+    excited_bond_map.insert(1,0);
+    excited_bond_map.insert(2,0);
+
+
     for _i in 1..=number_of_generations{
         let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
         let mut is_chain_valid: bool = false;
         for _j in 0..number_of_chains {
-            let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
+            // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
             let mut is_unique = false;
+
+            let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
     
-            while !is_chain_valid {
-                is_unique = false;
+            // while !is_chain_valid {
+            //     is_unique = false;
 
-                spin_chain = SpinChain::new();
+            //     spin_chain = SpinChain::new();
 
-                let mut _size = 0;
+            //     let mut _size = 0;
 
-                if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
-                    println!("UNIQUE");
-                    is_unique = true;
-                }
-
-                is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
-
+            if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
+                println!("UNIQUE");
+                is_unique = true;
             }
+
+            //     is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
+
+            // }
 
             if is_unique {
                 println!("PUSHING CHAIN");
