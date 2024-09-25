@@ -65,7 +65,7 @@ fn main() {
 
     for _i in 1..=number_of_generations{
         let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
-        let mut is_chain_valid: bool = false;
+        // let mut is_chain_valid: bool = false;
         for _j in 0..number_of_chains {
             // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
             let mut is_unique = false;
@@ -95,7 +95,7 @@ fn main() {
             }
 
             spin_chain_vec.push(spin_chain);
-            is_chain_valid = false;
+            // is_chain_valid = false;
         }
 
         if do_print_chains {
@@ -106,23 +106,23 @@ fn main() {
             println!("SPIN CHAIN SPINS: ");
         }
     
-        accumulate_spins_in_chain(&spin_chain_vec);
+        // accumulate_spins_in_chain(&spin_chain_vec);
 
     }
     if count_degen_chains {
         print_degen_counts(&hash_chain_map);
     }
 
-    if calculate_diffs {
-        for i in 0..unique_spin_chains.len() {
-            let spin_chain_1 = unique_spin_chains.get(i).unwrap();
-            for j in i+1..unique_spin_chains.len() - 1 {
-                let spin_chain_2 = unique_spin_chains.get(j).unwrap();
-                calculate_inner_product::<CHAIN_SIZE>(spin_chain_1, spin_chain_2);
-            }
-        }
+    // if calculate_diffs {
+    //     for i in 0..unique_spin_chains.len() {
+    //         let spin_chain_1 = unique_spin_chains.get(i).unwrap();
+    //         for j in i+1..unique_spin_chains.len() - 1 {
+    //             let spin_chain_2 = unique_spin_chains.get(j).unwrap();
+    //             calculate_inner_product::<CHAIN_SIZE>(spin_chain_1, spin_chain_2);
+    //         }
+    //     }
         
-    }
+    // }
 }
 
 /// A function to verify that a chain is well formed. That is that the net spin across the chain is zero.
