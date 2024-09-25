@@ -9,7 +9,7 @@ const CHAIN_SIZE:usize = 8;
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 1;
+    let number_of_chains = 100;
     let number_of_generations = 1;
     let do_print_chains = true;
     let count_degen_chains = true;
