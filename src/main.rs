@@ -58,7 +58,7 @@ fn main() {
     //     }
 
     let mut excited_bond_map = HashMap::<i8,i8>::new();
-    excited_bond_map.insert(0, 1);
+    excited_bond_map.insert(0, 3);
     excited_bond_map.insert(1,0);
     excited_bond_map.insert(2,0);
 
