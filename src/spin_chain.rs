@@ -39,26 +39,9 @@ impl<const N: usize> SpinChain<N> {
         SpinChain { chain, chain_hash, chain_bond_rep }
     }
 
-     // need to add new_excited() chain generation. This can be done by passing in an array of numbers 
-    //   0    1        2
-    // upup downup downdown
-    // so if we did something like new_excited([0], [1])
-    // we say build me an excited chain that has 1 excited bond of the form "upup"
-    // similarly ([0], [2])
-    // build excited chian with 2 excited bonds of the form "upup"
-    // and ([0,1], [1,1])
-    // build excited chain with one upup and one downup
-    // ([0,1], [2,1])
-    // add two excited upup bonds and one downup bond etc.
-    // reject a new_excited call if len(excited_array)!= len(number_of_exc_array)
-    // allow user to specify the order they would like the bond to be placed ie [0,1] 
-    // will do the upup first then the downup wherea [1,0] will do downup then upup
-    // with N total sites (where N = 2n)(N-2 that can be changed) we need to make sure that the sum of the excited states
-    // is <= N-2
-
-    /// A function for generating a spin chain with excited bonds
+    /// A function for generating a spin chain with excited up-cant bonds
     /// 
-    /// * 'excited_bond_map': A hashmap that contains 3 key-value pairs. The keys are 0,1,2 for up-canted, down-canted, and mismatch bond types. 
+    /// * 'excited_bond_map': A hashmap that contains 3 key-value pairs in the form (bond type, number of bonds). The keys are 0,1,2 for up-canted, down-canted, and mismatch bond types. 
 
     pub fn new_excited(excited_bond_map: &HashMap<i8, i8>) -> Self {
 
@@ -73,26 +56,26 @@ impl<const N: usize> SpinChain<N> {
         }
 
         println!("validating map");
-        let total_number_of_excited_bonds = SpinChain::<N>::validate_excited_sites(excited_bond_map);
+        SpinChain::<N>::validate_excited_sites(excited_bond_map);
 
         // Validation should have been successful, now we choose where to place the bonds
         // In the S_tot^z = 1 sector we have that the bonds should have the form
         // (...)[_i (...) ]_j (...)
 
-        let number_of_up_cant_sites = 2 * (*excited_bond_map.get(&0).unwrap());
-        let number_of_down_cant_sites = 2 * (*excited_bond_map.get(&1).unwrap());
-        let number_of_mismatch_sites = 2 * (*excited_bond_map.get(&2).unwrap());
+        let number_of_up_cant_bonds = *excited_bond_map.get(&0).unwrap();
+        let number_of_down_cant_bonds = *excited_bond_map.get(&1).unwrap();
+        let number_of_mismatch_sites = *excited_bond_map.get(&2).unwrap();
 
 
         // Nice property of BTreeMap is that it will keep keys in a specific order
         // example: doing insert(10, 20) followed by insert (2, 15) will have the
-        // entries stored in the order (2, 15), (10, 20)
+        // entries stored in the order (2, 15), (10, 20).
         let mut excited_site_indices = BTreeMap::<i8, i8>::new();
 
         // First, we populate the up_cant sites. This is fairly straightforward since all indices come in pairs meaning that
         // by default they will not be embedded within another up-canted bond.
         println!("populating map with indices");
-        let number_of_up_cant_bonds = *excited_bond_map.get(&0).unwrap();
+        
         SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds);
 
         // The sites for the spin chain have been decided and validated in the previous step. We will now populate the spin
@@ -121,35 +104,35 @@ impl<const N: usize> SpinChain<N> {
         let mut count = 0;
 
         // Choose indices that will have an up-canted spin
+        // Use number of bonds to produce a pair of indices, (i,j) such that i<j, i is even, and j is odd.
         while count < number_of_bonds {
-            let mut bond_number = 1;
+            let mut index_counter = 1;
             let mut left_bond_index: i8 = 0;
-            while bond_number <=2 {
-                println!("bond number: {}", bond_number);
+
+            while index_counter <=2 {
+
+                println!("bond number: {}", index_counter);
 
                 let random_site_index = rng.gen_range(0..N-2) as i8;
-                
-                if bond_number == 1 && random_site_index % 2 == 0 {
-                    if !excited_site_indices.contains_key(&random_site_index) {
-                        println!("left index: {}", random_site_index);
-                        excited_site_indices.insert(random_site_index, 2);
-                        left_bond_index = random_site_index;
-                        bond_number = 2;
-                    }
-                    
-                }
-                if bond_number == 2 && random_site_index > left_bond_index && random_site_index % 2 != 0 {
-                    if !excited_site_indices.contains_key(&random_site_index) {
+
+                if index_counter == 1 && random_site_index % 2 == 0 
+                                    && !excited_site_indices.contains_key(&random_site_index){
+                    println!("left index: {}", random_site_index);
+                    excited_site_indices.insert(random_site_index, 2);
+                    left_bond_index = random_site_index;
+                    index_counter = 2;
+                } else if index_counter == 2 && random_site_index > left_bond_index 
+                                           && random_site_index % 2 != 0 
+                                           && !excited_site_indices.contains_key(&random_site_index) {
+
                         println!("right index: {}", random_site_index);
                         excited_site_indices.insert(random_site_index, 2);
-                        bond_number = 3;
-                    }
+                        index_counter = 3;
                 }
             }
             println!("count: {}", count);
             count += 1;
         }
-
     }
 
     fn construct_chain() -> [i8;N] {
@@ -303,7 +286,7 @@ impl<const N: usize> SpinChain<N> {
 
     }
 
-    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) -> usize {
+    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) {
 
         // the number of available sites is N-2 since the leftmost and rightmost
         // sites cannot be changed
@@ -321,8 +304,6 @@ impl<const N: usize> SpinChain<N> {
         if num_of_excited_sites > available_sites {
             panic!("The number of sites needed for excited bonds exceeded the number of available sites in the chain. excited sites: {}, size of chain: {}", num_of_excited_sites, N);
         }
-
-        total_number_of_excited_bonds
 
     }
     
