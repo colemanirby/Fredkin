@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 use spin_chain::SpinChain;
-use calculation_utils::*;
-use num_complex::Complex;
 mod spin_chain;
 mod calculation_utils;
 
-const CHAIN_SIZE:usize = 8;
+const CHAIN_SIZE:usize = 6;
 
 fn main() {
     // These should be command line arguments
@@ -58,7 +56,7 @@ fn main() {
     //     }
 
     let mut excited_bond_map = HashMap::<i8,i8>::new();
-    excited_bond_map.insert(0, 3);
+    excited_bond_map.insert(0, 2);
     excited_bond_map.insert(1,0);
     excited_bond_map.insert(2,0);
 

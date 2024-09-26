@@ -230,7 +230,7 @@ impl<const N: usize> SpinChain<N> {
             return;
         } else {
             chain[left_bound] = 1;
-            chain[right_bound - 1] = 1;
+            chain[right_bound - 1] = -1;
             for i in left_bound+1..right_bound {
                 // println!("Offset index: {}", )
                 println!("Dyck Word actualy index: {}", i);
