@@ -9,7 +9,7 @@ const CHAIN_SIZE:usize = 8;
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 100;
+    let number_of_chains = 1000;
     let number_of_generations = 1;
     let do_print_chains = true;
     let count_degen_chains = true;
@@ -22,7 +22,7 @@ fn main() {
     //tuple:         0                                 1                                 2
     //(# of times generated, spin chain rep: [1,1,-1,1...,-1-1,-1], bond representation:[(,(,...,(,),),)] )
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
-    let mut unique_spin_chains:  Vec<[i8; CHAIN_SIZE]> = Vec::new();
+    let mut unique_spin_chains:  Vec<[char; CHAIN_SIZE]> = Vec::new();
 
     // for _i in 1..=number_of_generations{
     //     let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
@@ -81,6 +81,7 @@ fn main() {
 
             if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
                 println!("UNIQUE");
+                hash_chain_map.insert(spin_chain.chain_hash, (1, spin_chain.chain, spin_chain.chain_bond_rep));
                 is_unique = true;
             }
 
@@ -90,7 +91,7 @@ fn main() {
 
             if is_unique {
                 println!("PUSHING CHAIN");
-                unique_spin_chains.push(spin_chain.chain);
+                unique_spin_chains.push(spin_chain.chain_bond_rep);
                 println!("VEC LENGTH: {}", unique_spin_chains.len());
             }
 
@@ -99,7 +100,7 @@ fn main() {
         }
 
         if do_print_chains {
-           print_chains(&spin_chain_vec)
+        //    print_chains(unique_spin_chains);
         }
 
         if _i == 1 {
@@ -113,6 +114,10 @@ fn main() {
         print_degen_counts(&hash_chain_map);
     }
 
+    if do_print_chains {
+        print_unique_chains(unique_spin_chains);
+    }
+
     // if calculate_diffs {
     //     for i in 0..unique_spin_chains.len() {
     //         let spin_chain_1 = unique_spin_chains.get(i).unwrap();
@@ -123,6 +128,18 @@ fn main() {
     //     }
         
     // }
+}
+
+fn print_unique_chains(chains: Vec<[char; CHAIN_SIZE]>) {
+
+    println!("UNIQUE SPIN CHAINS:  ");
+    println!("Number of unique chains: {}", chains.len());
+
+    for chain in chains {
+        let chain_string: String = chain.iter().collect();
+        println!("{}", chain_string);
+    }
+
 }
 
 /// A function to verify that a chain is well formed. That is that the net spin across the chain is zero.

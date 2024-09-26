@@ -82,18 +82,13 @@ impl<const N: usize> SpinChain<N> {
         // chain.
         let chain = SpinChain::<N>::construct_excited_chain(&mut excited_site_indices);
 
-        // These next two will be more difficult since we have added restrictions:
-        // 1. We cannot embed these bonds inside of other excited bonds
-        // NOTE: Maybe merge the up and down cant population? Can generate the indices for all of the sites, then randomly choose
-        // if up or down cant in paired sites. This will prevent embedding of bonds.
-        // SpinChain::<N>::populate_down_cant_site_indices(&mut excited_site_indices, number_of_down_cant_sites);
-        // Thes bonds can be embedded within eachother, but cannot be embedded within up/down-canted bonds
-        // SpinChain::<N>::populate_mismatch_site_indices(&mut excited_site_indices, number_of_mismatch_sites);
 
         let mut hasher = DefaultHasher::new();
         let chain_bond_rep = SpinChain::construct_bond_rep(chain);
         chain.hash(&mut hasher);
         let chain_hash = hasher.finish();
+
+
 
         SpinChain { chain, chain_hash, chain_bond_rep }
     }
@@ -197,7 +192,7 @@ impl<const N: usize> SpinChain<N> {
             let right_bound = *excited_indices_vec.get(index).unwrap();
             let right_bound_index = *right_bound as usize;
             let inner_length =  (right_bound_index - left_bound_index - 1) as u32;
-            SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, left_bound_index, right_bound_index, inner_length);           
+            SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, left_bound_index+1, right_bound_index, inner_length);           
             index += 1;
         }
 
@@ -212,7 +207,7 @@ impl<const N: usize> SpinChain<N> {
         // }
         println!("Filling in right side of chain");
         let right_side_length = (N - last_excited_bond_position -1) as u32;
-        SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, last_excited_bond_position, N, right_side_length);
+        SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, last_excited_bond_position+1, N, right_side_length);
 
         println!("chain created successfully!");
 
@@ -233,13 +228,13 @@ impl<const N: usize> SpinChain<N> {
             return;
         }
         else if length == 2 {
-            chain[left_bound + 1] = 1;
+            chain[left_bound] = 1;
             chain [right_bound - 1] = -1;
             return;
         } else {
-            chain[left_bound + 1] =1;
+            chain[left_bound] = 1;
             chain[right_bound - 1] = 1;
-            for i in left_bound+2..right_bound {
+            for i in left_bound+1..right_bound {
                 // println!("Offset index: {}", )
                 println!("Dyck Word actualy index: {}", i);
                 let prob_up = calculate_next_spin_prob(length, current_index, height);
