@@ -1,13 +1,16 @@
 use std::collections::HashMap;
+use rand_mt::Mt;
+use rand::{Rng, SeedableRng, RngCore};
+use rand_mt::Mt64;
 use spin_chain::SpinChain;
 mod spin_chain;
 mod calculation_utils;
 
-const CHAIN_SIZE:usize = 6;
+const CHAIN_SIZE:usize = 8;
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 1000;
+    let number_of_chains = 1;
     let number_of_generations = 1;
     let do_print_chains = true;
     let count_degen_chains = true;
@@ -22,70 +25,27 @@ fn main() {
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
     let mut unique_spin_chains:  Vec<[char; CHAIN_SIZE]> = Vec::new();
 
-    // for _i in 1..=number_of_generations{
-    //     let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
-    //     let mut is_chain_valid: bool = false;
-    //     for _j in 0..number_of_chains {
-    //         let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
-    //         let mut is_unique = false;
-    
-    //         while !is_chain_valid {
-    //             is_unique = false;
-
-    //             spin_chain = SpinChain::new();
-
-    //             let mut _size = 0;
-
-    //             if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
-    //                 println!("UNIQUE");
-    //                 is_unique = true;
-    //             }
-
-    //             is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
-
-    //         }
-
-    //         if is_unique {
-    //             println!("PUSHING CHAIN");
-    //             unique_spin_chains.push(spin_chain.chain);
-    //             println!("VEC LENGTH: {}", unique_spin_chains.len());
-    //         }
-
-    //         spin_chain_vec.push(spin_chain);
-    //         is_chain_valid = false;
-    //     }
-
     let mut excited_bond_map = HashMap::<i8,i8>::new();
-    excited_bond_map.insert(0, 2);
+    excited_bond_map.insert(0, 1);
     excited_bond_map.insert(1,0);
     excited_bond_map.insert(2,0);
 
-
-    for _i in 1..=number_of_generations{
         let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
         // let mut is_chain_valid: bool = false;
         for _j in 0..number_of_chains {
             // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
             let mut is_unique = false;
+            let mut is_alive = true;
 
             let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
-    
-            // while !is_chain_valid {
-            //     is_unique = false;
 
-            //     spin_chain = SpinChain::new();
-
-            //     let mut _size = 0;
+            let mut chain: [i8;CHAIN_SIZE] = spin_chain.chain;
 
             if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
                 println!("UNIQUE");
                 hash_chain_map.insert(spin_chain.chain_hash, (1, spin_chain.chain, spin_chain.chain_bond_rep));
                 is_unique = true;
             }
-
-            //     is_chain_valid = verify_chain(&spin_chain, &mut hash_chain_map, count_degen_chains);
-
-            // }
 
             if is_unique {
                 println!("PUSHING CHAIN");
@@ -95,19 +55,22 @@ fn main() {
 
             spin_chain_vec.push(spin_chain);
             // is_chain_valid = false;
+
+            let mut step_number = 0;
+            while is_alive {
+                is_alive = evolve_chain(&mut chain);
+                step_number += 1;
+            }
+
+            println!("steps before chain died: {}", step_number);
         }
 
         if do_print_chains {
         //    print_chains(unique_spin_chains);
         }
-
-        if _i == 1 {
-            println!("SPIN CHAIN SPINS: ");
-        }
     
         // accumulate_spins_in_chain(&spin_chain_vec);
 
-    }
     if count_degen_chains {
         print_degen_counts(&hash_chain_map);
     }
@@ -192,6 +155,54 @@ pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE],[c
         println!("Hash: {} was generated {} times for chain {:?}", key_value_pair.0, key_value_pair.1.0, key_value_pair.1.1);
     }
 }
+
+/// A function that evolves the fredkin chain. It chooses the sites i, i+1, and i+2 and attempts to perform the fredkin swap.
+/// * chain: the spin chain that is to be evolved
+pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE]) -> bool {
+
+    let mut is_chain_alive = true;
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0..CHAIN_SIZE-2);
+
+    let left_spin_index = random_index;
+    let middle_spin_index = random_index + 1;
+    let right_spin_index = random_index + 2;
+
+    let left_spin = chain[left_spin_index];
+    let middle_spin = chain[middle_spin_index];
+    let right_spin = chain[right_spin_index];
+
+    if left_spin == 1 || left_spin == 2 {
+        let temp_value = chain[middle_spin_index];
+        if (middle_spin == 1 || middle_spin == 2) && right_spin == -1 {
+            if right_spin_index == CHAIN_SIZE - 1 && middle_spin == 2 {
+                is_chain_alive = false;
+            } else if right_spin_index != CHAIN_SIZE -1 {
+                chain[middle_spin_index] = chain[right_spin_index];
+                chain[right_spin_index] = temp_value;
+            }
+        } else if middle_spin == -1 && (right_spin == 1 || right_spin == 2){
+            chain[middle_spin_index] = chain[right_spin_index];
+            chain[right_spin_index] = temp_value;
+        } else if middle_spin == -1 && right_spin == -1 {
+            chain[middle_spin_index] = chain[left_spin_index];
+            chain[left_spin_index] = temp_value;
+        }
+    } else {
+        if middle_spin == 1 || middle_spin == 2 {
+            let temp_value = chain[middle_spin_index];
+            chain[middle_spin_index] = chain[left_spin_index];
+            chain[left_spin_index] = temp_value;
+        }
+    }
+        println!("Indices: {},{},{}", left_spin_index, middle_spin_index, right_spin_index);
+        println!("{:?}", chain);
+
+    is_chain_alive
+
+}
+
+
 
 /// A method that iterates through the collection of generated spin chains.
 /// It sums spins at the same site in each chain to see what the "net" spin is.
