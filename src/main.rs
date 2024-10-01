@@ -3,6 +3,7 @@ use rand_mt::Mt;
 use rand::{Rng, SeedableRng, RngCore};
 use rand_mt::Mt64;
 use spin_chain::SpinChain;
+use rand::prelude::ThreadRng;
 mod spin_chain;
 mod calculation_utils;
 
@@ -30,44 +31,48 @@ fn main() {
     excited_bond_map.insert(1,0);
     excited_bond_map.insert(2,0);
 
-        let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
-        // let mut is_chain_valid: bool = false;
-        for _j in 0..number_of_chains {
-            // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
-            let mut is_unique = false;
-            let mut is_alive = true;
+    let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
+    // let mut is_chain_valid: bool = false;
+    for _j in 0..number_of_chains {
+        // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
+        let mut is_unique = false;
+        let mut is_alive = true;
+        let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
+        let mut chain: [i8;CHAIN_SIZE] = spin_chain.chain;
 
-            let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
-
-            let mut chain: [i8;CHAIN_SIZE] = spin_chain.chain;
-
-            if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
-                println!("UNIQUE");
-                hash_chain_map.insert(spin_chain.chain_hash, (1, spin_chain.chain, spin_chain.chain_bond_rep));
-                is_unique = true;
-            }
-
-            if is_unique {
-                println!("PUSHING CHAIN");
-                unique_spin_chains.push(spin_chain.chain_bond_rep);
-                println!("VEC LENGTH: {}", unique_spin_chains.len());
-            }
-
-            spin_chain_vec.push(spin_chain);
-            // is_chain_valid = false;
-
-            let mut step_number = 0;
-            while is_alive {
-                is_alive = evolve_chain(&mut chain);
-                step_number += 1;
-            }
-
-            println!("steps before chain died: {}", step_number);
+        if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
+            println!("UNIQUE");
+            hash_chain_map.insert(spin_chain.chain_hash, (1, spin_chain.chain, spin_chain.chain_bond_rep));
+            is_unique = true;
         }
 
-        if do_print_chains {
-        //    print_chains(unique_spin_chains);
+        if is_unique {
+            println!("PUSHING CHAIN");
+            unique_spin_chains.push(spin_chain.chain_bond_rep);
+            println!("VEC LENGTH: {}", unique_spin_chains.len());
         }
+
+        spin_chain_vec.push(spin_chain);
+        // is_chain_valid = false;
+        let mut step_number = 0;
+        // let mut rng = Mt64::new_unseeded();
+        // let seed = "0x122212121222";
+        let mut rng_seed: ThreadRng = rand::thread_rng();
+        let mut rng = Mt64::new(rng_seed.gen());
+        // rng.gen_range(0..CHAIN_SIZE-2);
+        // let mod_number = (CHAIN_SIZE - 2) as u64;
+
+        while is_alive {
+            let random_index = (rng.next_u64() as usize) % (CHAIN_SIZE - 2);
+            is_alive = evolve_chain(&mut chain, random_index);
+            step_number += 1;
+        }
+
+        println!("steps before chain died: {}", step_number);
+    }
+    if do_print_chains {
+    //    print_chains(unique_spin_chains);
+    }
     
         // accumulate_spins_in_chain(&spin_chain_vec);
 
@@ -158,11 +163,12 @@ pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE],[c
 
 /// A function that evolves the fredkin chain. It chooses the sites i, i+1, and i+2 and attempts to perform the fredkin swap.
 /// * chain: the spin chain that is to be evolved
-pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE]) -> bool {
+pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE], random_index: usize) -> bool {
 
+    // if random_index == CHAIN_SIZE-3 && chain[random_index] == 2 return false;
     let mut is_chain_alive = true;
-    let mut rng = rand::thread_rng();
-    let random_index = rng.gen_range(0..CHAIN_SIZE-2);
+    // let mut rng = rand::thread_rng();
+    // let random_index = rng.gen_range(0..CHAIN_SIZE-2);
 
     let left_spin_index = random_index;
     let middle_spin_index = random_index + 1;
@@ -175,7 +181,7 @@ pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE]) -> bool {
     if left_spin == 1 || left_spin == 2 {
         let temp_value = chain[middle_spin_index];
         if (middle_spin == 1 || middle_spin == 2) && right_spin == -1 {
-            if right_spin_index == CHAIN_SIZE - 1 && middle_spin == 2 {
+            if right_spin_index == (CHAIN_SIZE - 1) && (middle_spin == 2 || middle_spin ==1) {
                 is_chain_alive = false;
             } else if right_spin_index != CHAIN_SIZE -1 {
                 chain[middle_spin_index] = chain[right_spin_index];
@@ -184,19 +190,19 @@ pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE]) -> bool {
         } else if middle_spin == -1 && (right_spin == 1 || right_spin == 2){
             chain[middle_spin_index] = chain[right_spin_index];
             chain[right_spin_index] = temp_value;
-        } else if middle_spin == -1 && right_spin == -1 {
+        } else if (middle_spin == -1 && right_spin == -1) && left_spin_index != 0 {
             chain[middle_spin_index] = chain[left_spin_index];
             chain[left_spin_index] = temp_value;
         }
     } else {
-        if middle_spin == 1 || middle_spin == 2 {
+        if (middle_spin == 1 || middle_spin == 2) && right_spin == -1 && left_spin_index != 0{
             let temp_value = chain[middle_spin_index];
             chain[middle_spin_index] = chain[left_spin_index];
             chain[left_spin_index] = temp_value;
         }
     }
-        println!("Indices: {},{},{}", left_spin_index, middle_spin_index, right_spin_index);
-        println!("{:?}", chain);
+        // println!("Indices: {},{},{}", left_spin_index, middle_spin_index, right_spin_index);
+        // println!("{:?}", chain);
 
     is_chain_alive
 
