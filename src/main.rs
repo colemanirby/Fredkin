@@ -14,6 +14,7 @@ struct Run {
     pub step_count: u128
 }
 
+// Key Value Pair: (spin sector, Run vector)
 #[derive(Serialize)]
 struct RunData {
     pub runs: HashMap<u128, Vec<Run>>
@@ -76,7 +77,6 @@ fn main() {
             step_count += 1;
         }
 
-        run_data.runs.get(1)
     }
     if do_print_chains {
     //    print_chains(unique_spin_chains);
