@@ -9,10 +9,14 @@ mod calculation_utils;
 
 const CHAIN_SIZE:usize = 8;
 
+struct RunData {
+    pub spin_sector: u128,
+    pub step_count: Vec<u128>
+}
+
 fn main() {
     // These should be command line arguments
     let number_of_chains = 1;
-    let number_of_generations = 1;
     let do_print_chains = true;
     let count_degen_chains = true;
     let calculate_diffs = true;
@@ -53,22 +57,17 @@ fn main() {
         }
 
         spin_chain_vec.push(spin_chain);
-        // is_chain_valid = false;
-        let mut step_number = 0;
-        // let mut rng = Mt64::new_unseeded();
-        // let seed = "0x122212121222";
+
+        let mut step_count = 0;
         let mut rng_seed: ThreadRng = rand::thread_rng();
         let mut rng = Mt64::new(rng_seed.gen());
-        // rng.gen_range(0..CHAIN_SIZE-2);
-        // let mod_number = (CHAIN_SIZE - 2) as u64;
+
 
         while is_alive {
-            let random_index = (rng.next_u64() as usize) % (CHAIN_SIZE - 2);
+            let random_index = rng.gen_range(0..CHAIN_SIZE - 2);
             is_alive = evolve_chain(&mut chain, random_index);
-            step_number += 1;
+            step_count += 1;
         }
-
-        println!("steps before chain died: {}", step_number);
     }
     if do_print_chains {
     //    print_chains(unique_spin_chains);
@@ -165,11 +164,7 @@ pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE],[c
 /// * chain: the spin chain that is to be evolved
 pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE], random_index: usize) -> bool {
 
-    // if random_index == CHAIN_SIZE-3 && chain[random_index] == 2 return false;
     let mut is_chain_alive = true;
-    // let mut rng = rand::thread_rng();
-    // let random_index = rng.gen_range(0..CHAIN_SIZE-2);
-
     let left_spin_index = random_index;
     let middle_spin_index = random_index + 1;
     let right_spin_index = random_index + 2;
@@ -201,14 +196,10 @@ pub fn evolve_chain(chain: &mut [i8;CHAIN_SIZE], random_index: usize) -> bool {
             chain[left_spin_index] = temp_value;
         }
     }
-        // println!("Indices: {},{},{}", left_spin_index, middle_spin_index, right_spin_index);
-        // println!("{:?}", chain);
 
     is_chain_alive
 
 }
-
-
 
 /// A method that iterates through the collection of generated spin chains.
 /// It sums spins at the same site in each chain to see what the "net" spin is.
@@ -224,49 +215,4 @@ pub fn accumulate_spins_in_chain(spin_chain_vec: &Vec<SpinChain<CHAIN_SIZE>>) {
         }
     }
     println!("{:?}", spin_accum_array);
-}
-
-/// Function to build the Hamiltonian for a given Fredkin Spin Chain as described in
-/// Eq. 6 in arXiv:1805.00532
-pub fn build_hamiltonian(spin_chain: &[i8;CHAIN_SIZE]) {
-    // H = sum i = 3 to N-2 F_i + P_2,3 + (D_2 D_3)/2 + P_N-2,N-1 + (U_N-2 U_N-1)/2
-    // F_i = (U_i-1 P_i,i+1) + (P_i-1 D_i+1)
-
-    for i in 3..spin_chain.len() - 1 {
-
-        println!("{}",i);
-
-    }
-
-
-}
-
-pub fn build_fredkin_op(site:usize) {
-
-    build_projection_matrix(site);
-    build_spin_up_matrix(site - 1);
-    build_projection_matrix(site-1);
-    build_spin_down_matrix(site + 1);
-
-}
-
-///P_i,i+1= 1/4 (I - sig_i dot sig_i+1) where sig = (sig_x, sig_y, sig_z)
-pub fn build_projection_matrix(site:usize) {
-    let next_site = site + 1;
-
-}
-
-///D_i = 1/2 (I - sig_i_z)
-pub fn build_spin_down_matrix(site:usize) {
-
-}
-
-///U_i = 1/2 (I + sig_i_z)
-pub fn build_spin_up_matrix(site:usize) {
-
-}
-
-/// square matrix multiplication AB
-pub fn square_matrix_mul(A: Vec<Vec<i32>>, B:Vec<Vec<i32>>) {
-
 }
