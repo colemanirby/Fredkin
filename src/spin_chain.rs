@@ -9,7 +9,8 @@ use rand::prelude::ThreadRng;
 pub struct SpinChain<const N: usize> {
     pub chain: [i8;N],
     pub chain_hash: u64,
-    pub chain_bond_rep: [char; N]
+    pub chain_bond_rep: [char; N],
+    pub spin_sector: usize
 }
 
 /// Creates a Spin Chain based on "height above horizon".
@@ -25,7 +26,8 @@ impl<const N: usize> SpinChain<N> {
         // let chain_bond_rep: [String; N] = 
         let chain_bond_rep: [char; N] = [' '; N];
         let chain_hash = 0;
-        SpinChain { chain, chain_hash, chain_bond_rep }
+        let spin_sector = 0;
+        SpinChain { chain, chain_hash, chain_bond_rep,  spin_sector}
     }
 
     pub fn new() -> Self {
@@ -34,7 +36,8 @@ impl<const N: usize> SpinChain<N> {
         let chain_bond_rep = SpinChain::construct_bond_rep(chain);
         chain.hash(&mut hasher);
         let chain_hash = hasher.finish();
-        SpinChain { chain, chain_hash, chain_bond_rep }
+        let spin_sector = 0;
+        SpinChain { chain, chain_hash, chain_bond_rep, spin_sector }
     }
 
     /// A function for generating a spin chain with excited up-cant bonds
@@ -54,7 +57,7 @@ impl<const N: usize> SpinChain<N> {
         }
 
         println!("validating map");
-        SpinChain::<N>::validate_excited_sites(excited_bond_map);
+        let spin_sector = SpinChain::<N>::validate_excited_sites(excited_bond_map);
 
         // Validation should have been successful, now we choose where to place the bonds
         // In the S_tot^z = 1 sector we have that the bonds should have the form
@@ -88,7 +91,7 @@ impl<const N: usize> SpinChain<N> {
 
 
 
-        SpinChain { chain, chain_hash, chain_bond_rep }
+        SpinChain { chain, chain_hash, chain_bond_rep, spin_sector}
     }
 
     /// A function that will generate indices that will have an excited bond
@@ -286,15 +289,17 @@ impl<const N: usize> SpinChain<N> {
 
     /// A function that ensures a user does not pass in more bonds than there are sites
     /// * number_of_bonds: A map containing all bond types and the number of each bond
-    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) {
+    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>) -> usize {
 
         // the number of available sites is N-2 since the leftmost and rightmost
         // sites cannot be changed
         let available_sites = N-2;
+        let mut spin_sector = 0;
         let mut total_number_of_excited_bonds:usize = 0;
         for entry in number_of_bonds {
 
             total_number_of_excited_bonds += *entry.1 as usize;
+            spin_sector +=1;
         }
 
         // above we simply find out how many exicted bonds we want. We need to multiply this by 2 
@@ -304,6 +309,8 @@ impl<const N: usize> SpinChain<N> {
         if num_of_excited_sites > available_sites {
             panic!("The number of sites needed for excited bonds exceeded the number of available sites in the chain. excited sites: {}, size of chain: {}", num_of_excited_sites, N);
         }
+
+        spin_sector
 
     }
     

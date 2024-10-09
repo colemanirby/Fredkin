@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use rand_mt::Mt;
-use rand::{Rng, SeedableRng, RngCore};
+use std::{collections::HashMap};
+use serde::Serialize;
+use rand::{Rng};
 use rand_mt::Mt64;
 use spin_chain::SpinChain;
 use rand::prelude::ThreadRng;
@@ -9,9 +9,14 @@ mod calculation_utils;
 
 const CHAIN_SIZE:usize = 8;
 
+#[derive(Serialize)]
+struct Run {
+    pub step_count: u128
+}
+
+#[derive(Serialize)]
 struct RunData {
-    pub spin_sector: u128,
-    pub step_count: Vec<u128>
+    pub runs: HashMap<u128, Vec<Run>>
 }
 
 fn main() {
@@ -27,6 +32,8 @@ fn main() {
     //Key: hash of chain
     //tuple:         0                                 1                                 2
     //(# of times generated, spin chain rep: [1,1,-1,1...,-1-1,-1], bond representation:[(,(,...,(,),),)] )
+    let runs: HashMap<u128, Vec<Run>> = HashMap::new();
+    let run_data = RunData{runs};
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
     let mut unique_spin_chains:  Vec<[char; CHAIN_SIZE]> = Vec::new();
 
@@ -68,6 +75,8 @@ fn main() {
             is_alive = evolve_chain(&mut chain, random_index);
             step_count += 1;
         }
+
+        run_data.runs.get(1)
     }
     if do_print_chains {
     //    print_chains(unique_spin_chains);
