@@ -1,40 +1,32 @@
-use std::{collections::HashMap};
-use serde::Serialize;
-use rand::{Rng};
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use rand::Rng;
 use rand_mt::Mt64;
 use spin_chain::SpinChain;
 use rand::prelude::ThreadRng;
 mod spin_chain;
 mod calculation_utils;
+mod file_utils;
 
 const CHAIN_SIZE:usize = 8;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct Run {
     pub step_count: u128
 }
 
 // Key Value Pair: (spin sector, Run vector)
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct RunData {
-    pub runs: HashMap<u128, Vec<Run>>
+    pub runs: HashMap<usize, Vec<Run>>
 }
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 1;
-    let do_print_chains = true;
-    let count_degen_chains = true;
-    let calculate_diffs = true;
+    let number_of_chains = 4;
     //
 
-    // a map that keeps track of how many unique chains have been genearted, their bond representation, how many times
-    // the chain has been generated. 
-    //Key: hash of chain
-    //tuple:         0                                 1                                 2
-    //(# of times generated, spin chain rep: [1,1,-1,1...,-1-1,-1], bond representation:[(,(,...,(,),),)] )
-    let runs: HashMap<u128, Vec<Run>> = HashMap::new();
-    let run_data = RunData{runs};
+    let mut run_data: RunData = file_utils::load_data("./the_runs.txt".to_string());
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
     let mut unique_spin_chains:  Vec<[char; CHAIN_SIZE]> = Vec::new();
 
@@ -44,12 +36,13 @@ fn main() {
     excited_bond_map.insert(2,0);
 
     let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
-    // let mut is_chain_valid: bool = false;
+
     for _j in 0..number_of_chains {
         // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
         let mut is_unique = false;
         let mut is_alive = true;
-        let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
+        let spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
+        let spin_sector = spin_chain.spin_sector;
         let mut chain: [i8;CHAIN_SIZE] = spin_chain.chain;
 
         if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
@@ -77,31 +70,19 @@ fn main() {
             step_count += 1;
         }
 
-    }
-    if do_print_chains {
-    //    print_chains(unique_spin_chains);
-    }
-    
-        // accumulate_spins_in_chain(&spin_chain_vec);
+        let run = Run{step_count};
 
-    if count_degen_chains {
-        print_degen_counts(&hash_chain_map);
-    }
+        let contains_spin_sector = run_data.runs.contains_key(&spin_sector);
 
-    if do_print_chains {
-        print_unique_chains(unique_spin_chains);
+        if contains_spin_sector {
+            run_data.runs.get_mut(&spin_sector).unwrap().push(run);
+        } else {
+            run_data.runs.insert(spin_sector, vec![run]);  
+        }
     }
 
-    // if calculate_diffs {
-    //     for i in 0..unique_spin_chains.len() {
-    //         let spin_chain_1 = unique_spin_chains.get(i).unwrap();
-    //         for j in i+1..unique_spin_chains.len() - 1 {
-    //             let spin_chain_2 = unique_spin_chains.get(j).unwrap();
-    //             calculate_inner_product::<CHAIN_SIZE>(spin_chain_1, spin_chain_2);
-    //         }
-    //     }
-        
-    // }
+    file_utils::save_data("./the_runs.txt".to_string(), &run_data);
+
 }
 
 fn print_unique_chains(chains: Vec<[char; CHAIN_SIZE]>) {

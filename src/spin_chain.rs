@@ -299,7 +299,7 @@ impl<const N: usize> SpinChain<N> {
         for entry in number_of_bonds {
 
             total_number_of_excited_bonds += *entry.1 as usize;
-            spin_sector +=1;
+            spin_sector +=*entry.1 as usize;
         }
 
         // above we simply find out how many exicted bonds we want. We need to multiply this by 2 
