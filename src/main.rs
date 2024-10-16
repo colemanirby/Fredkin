@@ -23,7 +23,7 @@ struct RunData {
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 4;
+    let number_of_chains = 10;
     //
 
     let mut run_data: RunData = file_utils::load_data("./the_runs.txt".to_string());

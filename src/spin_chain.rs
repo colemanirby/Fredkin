@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::i8;
-use rand::{Rng};
+use rand::Rng;
 use rand::prelude::ThreadRng;
 // Spin chain struct
 pub struct SpinChain<const N: usize> {
