@@ -64,8 +64,8 @@ impl<const N: usize> SpinChain<N> {
         // (...)[_i (...) ]_j (...)
 
         let number_of_up_cant_bonds = *excited_bond_map.get(&0).unwrap();
-        let number_of_down_cant_bonds = *excited_bond_map.get(&1).unwrap();
-        let number_of_mismatch_sites = *excited_bond_map.get(&2).unwrap();
+        // let number_of_down_cant_bonds = *excited_bond_map.get(&1).unwrap();
+        // let number_of_mismatch_sites = *excited_bond_map.get(&2).unwrap();
 
 
         // Nice property of BTreeMap is that it will keep keys in a specific order
@@ -203,6 +203,7 @@ impl<const N: usize> SpinChain<N> {
         println!("Filling in right side of chain");
         let right_side_length = (N - last_excited_bond_position -1) as u32;
         SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, last_excited_bond_position+1, N, right_side_length);
+        println!("chain after filling in right side: {:?}", chain);
 
         println!("chain created successfully!");
 
@@ -313,15 +314,6 @@ impl<const N: usize> SpinChain<N> {
         spin_sector
 
     }
-    
-    fn populate_down_cant_site_indices(excited_site_indices:  &BTreeMap<i8, i8>, number_of_down_cant_sites: i8) {
-    
-    }
-    
-    fn populate_mismatch_site_indices(excited_site_indices:  &BTreeMap<i8, i8>, number_of_mismatch_sites: i8) {
-    
-    }
-
 
     /// Temporary function that needs to be re-written
     fn construct_bond_rep(chain: [i8;N]) -> [char;N] {

@@ -1,7 +1,19 @@
-use std::{fs::File, io::{Read, Write}};
+use std::{collections::HashMap, fs::File, io::{Read, Write}};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json;
+
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub struct Run {
+    pub step_count: u128
+}
+
+// Key Value Pair: <spin sector: <chain_length: Vec<Run>>
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RunData {
+    pub runs: HashMap<usize, HashMap<usize, Vec<Run>>>
+}
 
 pub fn load_data<T: DeserializeOwned>(file_name: String) -> T {
 

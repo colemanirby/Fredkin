@@ -1,30 +1,23 @@
 use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 use rand::Rng;
 use rand_mt::Mt64;
 use spin_chain::SpinChain;
 use rand::prelude::ThreadRng;
+use file_utils::{RunData, Run};
 mod spin_chain;
 mod calculation_utils;
 mod file_utils;
 
 const CHAIN_SIZE:usize = 8;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-struct Run {
-    pub step_count: u128
-}
 
-// Key Value Pair: (spin sector, Run vector)
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct RunData {
-    pub runs: HashMap<usize, Vec<Run>>
-}
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 10;
+    let number_of_chains = 10000;
     //
+
+    let calc_z = true;
 
     let mut run_data: RunData = file_utils::load_data("./the_runs.txt".to_string());
     let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
@@ -72,27 +65,71 @@ fn main() {
 
         let run = Run{step_count};
 
-        let contains_spin_sector = run_data.runs.contains_key(&spin_sector);
-
-        if contains_spin_sector {
-            run_data.runs.get_mut(&spin_sector).unwrap().push(run);
-        } else {
-            run_data.runs.insert(spin_sector, vec![run]);  
-        }
+        update_run_data(run, &mut run_data, spin_sector, CHAIN_SIZE);
     }
 
     file_utils::save_data("./the_runs.txt".to_string(), &run_data);
 
+    if calc_z {
+        println!("calculating z");
+        // average bond liftime: t (step number)
+        // t ~ N^(z + 1)
+        // ln t ~ (z+1) ln N
+        // z ~ ln(t)/ln(N) - 1
+
+        let runs = run_data.runs.get(&1).unwrap().get(&CHAIN_SIZE).unwrap();
+        let num_of_entries = runs.len() as f64;
+        let mut summed_lifetimes: f64 = 0.0;
+        for run in runs{
+            summed_lifetimes += run.step_count as f64;
+        }
+
+        println!("summed lifetime: {summed_lifetimes:?}");
+        println!("total runs: {num_of_entries:?}");
+        
+
+        let average_lifetime = summed_lifetimes / num_of_entries;
+        let chain_size_float = CHAIN_SIZE as f64;
+
+        println!("average_liftime {average_lifetime:?}");
+        println!("chain size: {chain_size_float:?}");
+
+        // let div = average_lifetime/chain_size_float;
+
+        let z = (average_lifetime.ln()/chain_size_float.ln() )- 1.0;
+
+        println!("z: {z:?}");
+
+    }
+
+    for spin_chain in unique_spin_chains {
+        for symbol in spin_chain{
+            print!("{}", symbol);
+        }
+        println!();
+        
+    }
+
 }
 
-fn print_unique_chains(chains: Vec<[char; CHAIN_SIZE]>) {
+fn update_run_data(run: Run, run_data: &mut RunData, spin_sector: usize, chain_size: usize) {
+    let contains_spin_sector = run_data.runs.contains_key(&spin_sector);
 
-    println!("UNIQUE SPIN CHAINS:  ");
-    println!("Number of unique chains: {}", chains.len());
-
-    for chain in chains {
-        let chain_string: String = chain.iter().collect();
-        println!("{}", chain_string);
+    if contains_spin_sector {
+        let contains_chainlength = run_data.runs.get_mut(&spin_sector).unwrap().contains_key(&chain_size);
+        if contains_chainlength {
+            let data = run_data.runs.get_mut(&spin_sector).unwrap().get_mut(&chain_size).unwrap();
+            data.push(run);
+        } else {
+            let new_run_vec: Vec<Run> = vec![run];
+            let mut new_data = HashMap::new();
+            new_data.insert(chain_size, new_run_vec);
+        }
+    } else {
+        let new_run_vec: Vec<Run> = vec![run];
+        let mut new_data = HashMap::new();
+        new_data.insert(chain_size, new_run_vec);
+        run_data.runs.insert(spin_sector, new_data);
     }
 
 }
