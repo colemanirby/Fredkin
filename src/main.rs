@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use rand::Rng;
 use rand_mt::Mt64;
 use spin_chain::SpinChain;
@@ -8,107 +9,107 @@ mod spin_chain;
 mod calculation_utils;
 mod file_utils;
 
-const CHAIN_SIZE:usize = 8;
+const CHAIN_SIZE:usize = 40;
 
 
 
 fn main() {
     // These should be command line arguments
-    let number_of_chains = 10000;
+    let number_of_chains = 1000;
     //
 
-    let calc_z = true;
+    let run_chains = false;
+
+    let calc_z = false;
+
+    
 
     let mut run_data: RunData = file_utils::load_data("./the_runs.txt".to_string());
-    let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
-    let mut unique_spin_chains:  Vec<[char; CHAIN_SIZE]> = Vec::new();
 
-    let mut excited_bond_map = HashMap::<i8,i8>::new();
-    excited_bond_map.insert(0, 1);
-    excited_bond_map.insert(1,0);
-    excited_bond_map.insert(2,0);
+    if run_chains {
+        let mut hash_chain_map: HashMap<u64, (u128, [i8;CHAIN_SIZE],[char;CHAIN_SIZE])> = HashMap::new();
+        let mut unique_spin_chains:  Vec<[char; CHAIN_SIZE]> = Vec::new();
 
-    let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
+        let mut excited_bond_map = HashMap::<i8,i8>::new();
+        excited_bond_map.insert(0, 1);
+        excited_bond_map.insert(1,0);
+        excited_bond_map.insert(2,0);
 
-    for _j in 0..number_of_chains {
-        // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
-        let mut is_unique = false;
-        let mut is_alive = true;
-        let spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
-        let spin_sector = spin_chain.spin_sector;
-        let mut chain: [i8;CHAIN_SIZE] = spin_chain.chain;
+        let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
 
-        if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
-            println!("UNIQUE");
-            hash_chain_map.insert(spin_chain.chain_hash, (1, spin_chain.chain, spin_chain.chain_bond_rep));
-            is_unique = true;
+        for _j in 0..number_of_chains {
+            // let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_empty();
+            let mut is_unique = false;
+            let mut is_alive = true;
+            let spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map);
+            let spin_sector = spin_chain.spin_sector;
+            let mut chain: [i8;CHAIN_SIZE] = spin_chain.chain;
+
+            if !hash_chain_map.contains_key(&spin_chain.chain_hash) {
+                println!("UNIQUE");
+                hash_chain_map.insert(spin_chain.chain_hash, (1, spin_chain.chain, spin_chain.chain_bond_rep));
+                is_unique = true;
+            }
+
+            if is_unique {
+                println!("PUSHING CHAIN");
+                unique_spin_chains.push(spin_chain.chain_bond_rep);
+                println!("VEC LENGTH: {}", unique_spin_chains.len());
+            }
+
+            spin_chain_vec.push(spin_chain);
+
+            let mut step_count = 0;
+            let mut rng_seed: ThreadRng = rand::thread_rng();
+            let mut rng = Mt64::new(rng_seed.gen());
+
+
+            while is_alive {
+                let random_index = rng.gen_range(0..CHAIN_SIZE - 2);
+                is_alive = evolve_chain(&mut chain, random_index);
+                step_count += 1;
+            }
+
+            step_count -= 1;
+
+            let run = Run{step_count};
+
+            update_run_data(run, &mut run_data, spin_sector, CHAIN_SIZE);
         }
 
-        if is_unique {
-            println!("PUSHING CHAIN");
-            unique_spin_chains.push(spin_chain.chain_bond_rep);
-            println!("VEC LENGTH: {}", unique_spin_chains.len());
-        }
-
-        spin_chain_vec.push(spin_chain);
-
-        let mut step_count = 0;
-        let mut rng_seed: ThreadRng = rand::thread_rng();
-        let mut rng = Mt64::new(rng_seed.gen());
-
-
-        while is_alive {
-            let random_index = rng.gen_range(0..CHAIN_SIZE - 2);
-            is_alive = evolve_chain(&mut chain, random_index);
-            step_count += 1;
-        }
-
-        let run = Run{step_count};
-
-        update_run_data(run, &mut run_data, spin_sector, CHAIN_SIZE);
+        file_utils::save_data("./the_runs.txt".to_string(), &run_data);
     }
-
-    file_utils::save_data("./the_runs.txt".to_string(), &run_data);
 
     if calc_z {
-        println!("calculating z");
-        // average bond liftime: t (step number)
-        // t ~ N^(z + 1)
-        // ln t ~ (z+1) ln N
-        // z ~ ln(t)/ln(N) - 1
+      let runs_map = run_data.runs.get(&1).unwrap();
+      let mut plot_data: Vec<(f64, f64)> = Vec::new();
 
-        let runs = run_data.runs.get(&1).unwrap().get(&CHAIN_SIZE).unwrap();
-        let num_of_entries = runs.len() as f64;
-        let mut summed_lifetimes: f64 = 0.0;
-        for run in runs{
-            summed_lifetimes += run.step_count as f64;
+      for chain_size in runs_map.keys() {
+        let mut step_total: u128 = 0;
+        let runs = runs_map.get(chain_size).unwrap();
+        let total_entries = runs.len() as f64;
+        for run in runs {
+            step_total += run.step_count;
         }
+        let  step_total_conversion= step_total as f64;
+        let average_step_count = step_total_conversion/total_entries;
+        println!("average_step_count: {average_step_count}");
+        let chain_size_conversion = *chain_size as f64;
+        plot_data.push((chain_size_conversion, average_step_count));
+      }
+      let plot: Plot = Plot::new(plot_data).point_style(PointStyle::new().marker(PointMarker::Square).colour("#DD3355"));
 
-        println!("summed lifetime: {summed_lifetimes:?}");
-        println!("total runs: {num_of_entries:?}");
-        
-
-        let average_lifetime = summed_lifetimes / num_of_entries;
-        let chain_size_float = CHAIN_SIZE as f64;
-
-        println!("average_liftime {average_lifetime:?}");
-        println!("chain size: {chain_size_float:?}");
-
-        // let div = average_lifetime/chain_size_float;
-
-        let z = (average_lifetime.ln()/chain_size_float.ln() )- 1.0;
-
-        println!("z: {z:?}");
-
+      let v = ContinuousView::new().add(plot).x_range(0.0, 32.0).y_range(0.0, 10000.0);
+      Page::single(&v).save("chains.svg").unwrap();
     }
 
-    for spin_chain in unique_spin_chains {
-        for symbol in spin_chain{
-            print!("{}", symbol);
-        }
-        println!();
+    // for spin_chain in unique_spin_chains {
+    //     for symbol in spin_chain{
+    //         print!("{}", symbol);
+    //     }
+    //     println!();
         
-    }
+    // }
 
 }
 
@@ -116,16 +117,22 @@ fn update_run_data(run: Run, run_data: &mut RunData, spin_sector: usize, chain_s
     let contains_spin_sector = run_data.runs.contains_key(&spin_sector);
 
     if contains_spin_sector {
+        println!("Contains spin sector");
+        println!("Chain size: {chain_size}");
         let contains_chainlength = run_data.runs.get_mut(&spin_sector).unwrap().contains_key(&chain_size);
         if contains_chainlength {
+            println!("Contains chain length");
             let data = run_data.runs.get_mut(&spin_sector).unwrap().get_mut(&chain_size).unwrap();
             data.push(run);
         } else {
+            println!("Does not contain chain length");
             let new_run_vec: Vec<Run> = vec![run];
-            let mut new_data = HashMap::new();
-            new_data.insert(chain_size, new_run_vec);
+            // let mut new_data = HashMap::new();
+            // new_data.insert(chain_size, new_run_vec);
+            run_data.runs.get_mut(&spin_sector).unwrap().insert(chain_size, new_run_vec);
         }
     } else {
+        println!("Does not Contain spin sector");
         let new_run_vec: Vec<Run> = vec![run];
         let mut new_data = HashMap::new();
         new_data.insert(chain_size, new_run_vec);
