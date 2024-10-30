@@ -1,0 +1,85 @@
+<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(72, 364)">
+<g>
+<g>
+<rect fill="#DD3355" height="10" width="10" x="145" y="-8.564219999999999"/>
+<rect fill="#DD3355" height="10" width="10" x="385" y="-208.282396"/>
+<rect fill="#DD3355" height="10" width="10" x="325" y="-109.98265"/>
+<rect fill="#DD3355" height="10" width="10" x="535" y="-829.87434"/>
+<rect fill="#DD3355" height="10" width="10" x="175" y="-12.370486"/>
+<rect fill="#DD3355" height="10" width="10" x="205" y="-18.214304"/>
+<rect fill="#DD3355" height="10" width="10" x="295" y="-74.23980999999999"/>
+<rect fill="#DD3355" height="10" width="10" x="445" y="-325.26623"/>
+<rect fill="#DD3355" height="10" width="10" x="475" y="-505.92574"/>
+<rect fill="#DD3355" height="10" width="10" x="355" y="-148.58040200000002"/>
+<rect fill="#DD3355" height="10" width="10" x="415" y="-288.35783599999996"/>
+<rect fill="#DD3355" height="10" width="10" x="595" y="-1269.095758"/>
+<rect fill="#DD3355" height="10" width="10" x="235" y="-30.909156"/>
+<rect fill="#DD3355" height="10" width="10" x="505" y="-607.101886"/>
+<rect fill="#DD3355" height="10" width="10" x="265" y="-48.012754"/>
+<rect fill="#DD3355" height="10" width="10" x="115" y="-6.260822"/>
+<rect fill="#DD3355" height="10" width="10" x="565" y="-1035.4357220000002"/>
+</g>
+</g>
+<g>
+<g>
+<line stroke="black" stroke-width="1" x1="0" x2="0" y1="0" y2="10"/>
+<line stroke="black" stroke-width="1" x1="150" x2="150" y1="0" y2="10"/>
+<line stroke="black" stroke-width="1" x1="300" x2="300" y1="0" y2="10"/>
+<line stroke="black" stroke-width="1" x1="450" x2="450" y1="0" y2="10"/>
+</g>
+<line stroke="black" stroke-width="1" x1="0" x2="480" y1="0" y2="0"/>
+<g>
+<text font-size="12" text-anchor="middle" x="0" y="20">
+0
+</text>
+<text font-size="12" text-anchor="middle" x="150" y="20">
+10
+</text>
+<text font-size="12" text-anchor="middle" x="300" y="20">
+20
+</text>
+<text font-size="12" text-anchor="middle" x="450" y="20">
+30
+</text>
+</g>
+<text font-size="12" text-anchor="middle" x="240" y="30">
+
+</text>
+</g>
+<g>
+<g>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-0" y2="-0"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-68" y2="-68"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-136" y2="-136"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-204" y2="-204"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-272" y2="-272"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-340" y2="-340"/>
+</g>
+<line stroke="black" stroke-width="1" x1="0" x2="0" y1="0" y2="-340"/>
+<g>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-0">
+0
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-68">
+2000
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-136">
+4000
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-204">
+6000
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-272">
+8000
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-340">
+10000
+</text>
+</g>
+<text font-size="12" text-anchor="middle" transform="rotate(-90 -60 -170)" x="-60" y="-182">
+
+</text>
+</g>
+</g>
+</svg>
