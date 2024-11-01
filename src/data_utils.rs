@@ -31,11 +31,16 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
         .into_drawing_area();
     lifetime_drawing.fill(&WHITE).unwrap();
 
+    let final_entry = plot_data.last().unwrap();
+    let max_x = final_entry.0 + 2.0;
+    let max_y = final_entry.1 + 2.0;
+
+
     let mut lifetime_ctx = ChartBuilder::on(&lifetime_drawing)
         .set_label_area_size(LabelAreaPosition::Left, 60)
         .set_label_area_size(LabelAreaPosition::Bottom, 60)
         .caption("Fredkin Chain Lifetimes", ("sans-serif", 40))
-        .build_cartesian_2d(0f64..34f64, 0f64..15000f64)
+        .build_cartesian_2d(0.0..max_x, 0f64..max_y)
         .unwrap();
 
     lifetime_ctx.configure_mesh().draw().unwrap();
@@ -46,11 +51,14 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
     .into_drawing_area();
     log_lifetime_drawing.fill(&WHITE).unwrap();
 
+    let max_x_log = max_x.ln() + 1.0;
+    let max_y_log = max_y.ln() + 1.0;
+
     let mut lifetime_log_ctx = ChartBuilder::on(&log_lifetime_drawing)
         .set_label_area_size(LabelAreaPosition::Left, 60)
         .set_label_area_size(LabelAreaPosition::Bottom, 60)
         .caption("Fredkin Chain Lifetimes", ("sans-serif", 40))
-        .build_cartesian_2d(0.9f64..1.6f64, 1.5f64..4.2f64)
+        .build_cartesian_2d(0.9f64..max_x_log, 1.5f64..max_y_log)
         .unwrap();
 
     lifetime_log_ctx.configure_mesh().draw().unwrap();
@@ -85,9 +93,30 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
     println!("x2: {x_2}, y2: {y_2} and x1: {x_1}, y1: {y_1}");
     let delta_x = x_2 - x_1;
     let delta_y = y_2 - y_1;
-    let z = delta_y/delta_x;
+    let z = delta_y/delta_x - 1.0;
 
     println!("z: {z}");
+
+    println!("Average");
+
+    let mut sum_slope = 0.0;
+
+    for i in 0..plot_data.len() - 1 {
+        let x_2 = plot_data.get_mut(i + 1).unwrap().0;
+        let x_1 = plot_data.get_mut(i).unwrap().0;
+
+        let y_2 = plot_data.get_mut(i + 1).unwrap().1;
+        let y_1 = plot_data.get_mut(i).unwrap().1;
+
+        let delta_x = x_2.ln() - x_1.ln();
+        let delta_y = y_2.ln() - y_1.ln();
+
+        sum_slope += delta_y/delta_x;
+    } 
+
+    let average_z = sum_slope/(plot_data.len() as f64 - 1.0) - 1.0;
+
+    println!("average z: {average_z}");
     // ctx.draw_series(
     //     plot_data.iter().map(|point| Circle::new(*point, 5, &BLUE))
     // ).unwrap();
