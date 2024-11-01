@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use plotters::{chart::{ChartBuilder, LabelAreaPosition}, prelude::{BitMapBackend, Circle, IntoDrawingArea}, series::LineSeries, style::{BLUE, RED, WHITE}};
 
 use crate::file_utils::Run;
 
-pub fn generate_plot(runs_map: &HashMap<usize, Vec<Run>>) {
+pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
 
     println!("generating plot");
     let mut plot_data: Vec<(f64, f64)> = Vec::new();

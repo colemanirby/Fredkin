@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use rand::Rng;
 use rand_mt::Mt64;
@@ -70,7 +70,7 @@ fn main() {
     }
     // if not wanting to run chains, then perform data analysis
     else {
-      let runs_map: &HashMap<usize, Vec<Run>> = run_data.runs.get(&1).unwrap();
+      let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&1).unwrap();
       data_utils::generate_plot(runs_map);
     }
 }
@@ -89,7 +89,7 @@ fn update_run_data(run: Run, run_data: &mut RunData, spin_sector: usize, chain_s
         }
     } else {
         let new_run_vec: Vec<Run> = vec![run];
-        let mut new_data = HashMap::new();
+        let mut new_data = BTreeMap::new();
         new_data.insert(chain_size, new_run_vec);
         run_data.runs.insert(spin_sector, new_data);
     }
