@@ -3,9 +3,11 @@ use std::collections::{BTreeMap, HashMap};
 use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use plotters::{chart::{ChartBuilder, LabelAreaPosition}, prelude::{BitMapBackend, Circle, IntoDrawingArea}, series::LineSeries, style::{BLUE, RED, WHITE}};
 
-use crate::file_utils::Run;
+use crate::file_utils::{self, Run, ZData};
 
-pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
+pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>, spin_sector: &usize) {
+
+    let mut data: ZData = file_utils::load_data("./data/z_data.txt".to_string());
 
     println!("generating plot");
     let mut plot_data: Vec<(f64, f64)> = Vec::new();
@@ -27,7 +29,11 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
     //   let v = ContinuousView::new().add(plot).x_range(0.0, 32.0).y_range(0.0, 10000.0);
     //   Page::single(&v).save("chains.svg").unwrap();
 
-    let lifetime_drawing = BitMapBackend::new("data/plots/lifetime.png", (1920, 1080))
+    let mut lifetime_file_path = String::from("data/plots/lifetime_");
+    lifetime_file_path.push_str(spin_sector.to_string().as_str());
+    lifetime_file_path.push_str(".png");
+
+    let lifetime_drawing = BitMapBackend::new(lifetime_file_path.as_str(), (1920, 1080))
         .into_drawing_area();
     lifetime_drawing.fill(&WHITE).unwrap();
 
@@ -47,7 +53,11 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
 
     lifetime_ctx.draw_series(plot_data.iter().map(|point| Circle::new(*point, 5, &BLUE))).unwrap();
 
-    let log_lifetime_drawing = BitMapBackend::new("data/plots/lifetime_log.png", (1920, 1080))
+
+    let mut lifetime_log_file_path = String::from("data/plots/lifetime_log_");
+    lifetime_log_file_path.push_str(spin_sector.to_string().as_str());
+    lifetime_log_file_path.push_str(".png");
+    let log_lifetime_drawing = BitMapBackend::new(lifetime_log_file_path.as_str(), (1920, 1080))
     .into_drawing_area();
     log_lifetime_drawing.fill(&WHITE).unwrap();
 
@@ -117,6 +127,18 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>) {
     let average_z = sum_slope/(plot_data.len() as f64 - 1.0) - 1.0;
 
     println!("average z: {average_z}");
+
+    // let mut z_data = HashMap::new();
+    let mut zs = Vec::new();
+    zs.push(z);
+    zs.push(average_z);
+    // z_data.insert(*spin_sector, zs);
+
+    data.z_data.insert(*spin_sector, zs);
+    // let data = ZData{z_data};
+
+    file_utils::save_data("./data/z_data.txt".to_string(), &data);
+
     // ctx.draw_series(
     //     plot_data.iter().map(|point| Circle::new(*point, 5, &BLUE))
     // ).unwrap();

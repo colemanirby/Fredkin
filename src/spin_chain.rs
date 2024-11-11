@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::i8;
 use rand::Rng;
 use rand::prelude::ThreadRng;
+use rand_mt::Mt64;
 // Spin chain struct
 #[derive(Clone)]
 pub struct SpinChain<const N: usize> {
@@ -25,7 +26,7 @@ impl<const N: usize> SpinChain<N> {
     /// 
     /// * 'excited_bond_map': A hashmap that contains 3 key-value pairs in the form (bond type, number of bonds). The keys are 0,1,2 for up-canted, down-canted, and mismatch bond types. 
 
-    pub fn new_excited(excited_bond_map: &HashMap<i8, i8>, chain_size: usize) -> Self {
+    pub fn new_excited(excited_bond_map: &HashMap<usize, usize>, chain_size: usize) -> Self {
 
         // println!("Making new excited chain");
 
@@ -76,9 +77,10 @@ impl<const N: usize> SpinChain<N> {
     /// A function that will generate indices that will have an excited bond
     /// * excited_site_indices: An empty map that will be populated with the index for an excited bond as the key and the excitation type for the bond
     /// * number_of_bonds: The number of bonds that one wishes to generate
-    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<i8, i8>, number_of_bonds: i8, chain_size: usize) {
+    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<i8, i8>, number_of_bonds: usize, chain_size: usize) {
 
-        let mut rng = rand::thread_rng();
+        let mut rng_seed = rand::thread_rng();
+        let mut rng = Mt64::new(rng_seed.gen());
         let mut odd_number_counter = 0;
         let mut even_number_counter = 0;
 
@@ -215,7 +217,7 @@ impl<const N: usize> SpinChain<N> {
 
     /// A function that ensures a user does not pass in more bonds than there are sites
     /// * number_of_bonds: A map containing all bond types and the number of each bond
-    fn validate_excited_sites(number_of_bonds: &HashMap<i8, i8>, chain_size: usize) -> usize {
+    fn validate_excited_sites(number_of_bonds: &HashMap<usize, usize>, chain_size: usize) -> usize {
 
         // the number of available sites is N-2 since the leftmost and rightmost
         // sites cannot be changed
@@ -225,7 +227,7 @@ impl<const N: usize> SpinChain<N> {
         for entry in number_of_bonds {
 
             total_number_of_excited_bonds += *entry.1 as usize;
-            spin_sector +=*entry.1 as usize;
+            spin_sector +=*entry.1;
         }
 
         // above we simply find out how many exicted bonds we want. We need to multiply this by 2 

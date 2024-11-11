@@ -14,6 +14,10 @@ pub struct Run {
 pub struct RunData {
     pub runs: HashMap<usize, BTreeMap<usize, Vec<Run>>>
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ZData{
+    pub z_data: HashMap<usize, Vec<f64>>
+}
 
 pub fn load_data<T: DeserializeOwned>(file_name: String) -> T {
 

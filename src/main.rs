@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::env;
 use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use rand::Rng;
 use rand_mt::Mt64;
@@ -17,61 +18,86 @@ const CHAIN_SIZE:usize = 42;
 fn main() {
     // These should be command line arguments
     let number_of_chains = 1000;
-    let mut current_size = 8;
-    let max_size = 64;
+    // let max_size = 64;
     //
 
-    let run_chains = false;
+    let args: Vec<String> = env::args().collect();
+
+    let run_chains: bool = args.get(1).unwrap().parse().unwrap();
+
 
     
+    
+    // let run_chains = false;
+
+    let mut excited_bond_map:HashMap<usize, usize> = HashMap::<usize, usize>::new();
+    excited_bond_map.insert(0, 1);
+    excited_bond_map.insert(1,0);
+    excited_bond_map.insert(2,0);
+
+    let mut spin_sector = 0;
+
+    for entry in &excited_bond_map {
+        spin_sector += entry.1;
+    }
 
     let mut run_data: RunData = file_utils::load_data("./data/the_runs.txt".to_string());
 
     if run_chains {
+        
 
-        let mut excited_bond_map = HashMap::<i8,i8>::new();
-        excited_bond_map.insert(0, 1);
-        excited_bond_map.insert(1,0);
-        excited_bond_map.insert(2,0);
+        let max_size: usize = args.get(2).unwrap().parse().unwrap();
 
-        let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
+        let spin_sector_max: usize = args.get(3).unwrap().parse().unwrap(); 
 
-        while current_size <= max_size {
-            for _j in 0..number_of_chains {
-                let mut is_alive = true;
-                let spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size);
-                let mut spin_chain_rep = spin_chain.chain.clone();
-                let spin_sector = spin_chain.spin_sector;
-    
-                spin_chain_vec.push(spin_chain);
-    
-                let mut step_count = 0;
-                let mut rng_seed: ThreadRng = rand::thread_rng();
-                let mut rng = Mt64::new(rng_seed.gen());
-    
-    
-                while is_alive {
-                    let random_index = rng.gen_range(0..current_size - 2);
-                    is_alive = evolve_chain(&mut spin_chain_rep, random_index, current_size);
-                    step_count += 1;
+        for current_spin_sector in 1..=spin_sector_max {
+            println!("spin sector: {current_spin_sector}");
+            excited_bond_map.insert(0, current_spin_sector);
+
+            let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
+            let mut current_size= (2 * current_spin_sector) + 2;
+
+            while current_size <= max_size {
+                for _j in 0..number_of_chains {
+                    let mut is_alive = true;
+                    let spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size);
+                    let mut spin_chain_rep = spin_chain.chain.clone();
+                    let spin_sector = spin_chain.spin_sector;
+                
+                    spin_chain_vec.push(spin_chain);
+                
+                    let mut step_count = 0;
+                    let mut rng_seed: ThreadRng = rand::thread_rng();
+                    let mut rng = Mt64::new(rng_seed.gen());
+                
+                
+                    while is_alive {
+                        let random_index = rng.gen_range(0..current_size - 2);
+                        is_alive = evolve_chain(&mut spin_chain_rep, random_index, current_size);
+                        step_count += 1;
+                    }
+                
+                    // step_count -= 1;
+                
+                    let run = Run{step_count};
+                
+                    update_run_data(run, &mut run_data, spin_sector, current_size);
                 }
-    
-                // step_count -= 1;
-    
-                let run = Run{step_count};
-    
-                update_run_data(run, &mut run_data, spin_sector, current_size);
+                println!("completed spin chain of size {current_size}");
+                current_size+=2;
             }
-            println!("completed spin chain of size {current_size}");
-            current_size+=2;
+
+            file_utils::save_data("./data/the_runs.txt".to_string(), &run_data);
+            let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&current_spin_sector).unwrap();
+            data_utils::generate_plot(runs_map, &current_spin_sector);
         }
 
-        file_utils::save_data("./data/the_runs.txt".to_string(), &run_data);
+
     }
     // if not wanting to run chains, then perform data analysis
     else {
-      let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&1).unwrap();
-      data_utils::generate_plot(runs_map);
+      let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&spin_sector).unwrap();
+      data_utils::generate_plot(runs_map, &spin_sector);
     }
 }
 
