@@ -6,7 +6,7 @@ use rand_mt::Mt64;
 use spin_chain::SpinChain;
 use rand::prelude::ThreadRng;
 use file_utils::{RunData, Run};
-use log::LevelFilter;
+use log::{logger, LevelFilter};
 use log::info;
 mod spin_chain;
 mod calculation_utils;
@@ -54,6 +54,9 @@ fn main() {
 
         println!("Running chains up to size {max_size} and spin sector up to {spin_sector_max}");
 
+        let mut rng_seed: ThreadRng = rand::thread_rng();
+        let mut rng = Mt64::new(rng_seed.gen());
+
         for current_spin_sector in 1..=spin_sector_max {
             let mut run_data: RunData = RunData::new();
             println!("spin sector: {current_spin_sector}");
@@ -65,25 +68,19 @@ fn main() {
             while current_size <= max_size {
                 for _j in 0..number_of_chains {
                     let mut is_alive = true;
+                    // info!("generating spin chain");
                     let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size);
                 
                     let mut step_count = 0;
-                    let mut rng_seed: ThreadRng = rand::thread_rng();
-                    let mut rng = Mt64::new(rng_seed.gen());
-                
+
                 
                     while is_alive {
                         let random_index = rng.gen_range(0..current_size - 2);
                         is_alive = evolve_chain(&mut spin_chain.chain, random_index, current_size);
                         step_count += 1;
                     }
-                
+
                     update_run_data(&mut run_data, current_size, step_count);
-                    if (_j+1) % 100 == 0 {
-                        let run_num = _j + 1;
-                        info!("completed run number {run_num} for spin chain of size {current_size}")
-                    }
-                    
                     
                 }
                 println!("completed spin chain of size {current_size}");

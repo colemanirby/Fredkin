@@ -57,8 +57,13 @@ impl<const N: usize> SpinChain<N> {
         // First, we populate the up_cant sites. This is fairly straightforward since all indices come in pairs meaning that
         // by default they will not be embedded within another up-canted bond.
         // println!("populating map with indices");
+        let mut is_valid_map = false;
+
+        while !is_valid_map {
+            excited_site_indices.clear();
+            is_valid_map = SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds, chain_size);
+        }
         
-        SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds, chain_size);
 
         // println!("excited site indices: {excited_site_indices:?}");
 
@@ -79,7 +84,7 @@ impl<const N: usize> SpinChain<N> {
     /// A function that will generate indices that will have an excited bond
     /// * excited_site_indices: An empty map that will be populated with the index for an excited bond as the key and the excitation type for the bond
     /// * number_of_bonds: The number of bonds that one wishes to generate
-    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size: usize) {
+    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size: usize) -> bool {
 
         let mut rng_seed = rand::thread_rng();
         let mut rng = Mt64::new(rng_seed.gen());
@@ -99,11 +104,12 @@ impl<const N: usize> SpinChain<N> {
         }
 
         let is_valid_map = validate_site_index_map(excited_site_indices);
+        is_valid_map
 
-        if !is_valid_map {
-            excited_site_indices.clear();
-            SpinChain::<N>::populate_up_cant_site_index_map(excited_site_indices, number_of_bonds, chain_size);
-        }
+        // if !is_valid_map {
+        //     excited_site_indices.clear();
+        //     SpinChain::<N>::populate_up_cant_site_index_map(excited_site_indices, number_of_bonds, chain_size);
+        // }
     }
 
     // up_cant = 2, down_cant = 3, mismatch = 4
