@@ -12,7 +12,15 @@ pub struct Run {
 // Key Value Pair: <spin sector: <chain_length: Vec<Run>>
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RunData {
-    pub runs: HashMap<usize, BTreeMap<usize, Vec<Run>>>
+    pub runs: BTreeMap<usize, Vec<u128>>
+}
+
+impl RunData {
+    pub fn new() -> RunData {
+        let mut runs: BTreeMap<usize, Vec<u128>> = BTreeMap::new();
+        let run_data = RunData{runs};
+        run_data
+    }
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ZData{

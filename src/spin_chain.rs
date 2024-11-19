@@ -52,13 +52,15 @@ impl<const N: usize> SpinChain<N> {
         // Nice property of BTreeMap is that it will keep keys in a specific order
         // example: doing insert(10, 20) followed by insert (2, 15) will have the
         // entries stored in the order (2, 15), (10, 20).
-        let mut excited_site_indices = BTreeMap::<i8, i8>::new();
+        let mut excited_site_indices = BTreeMap::<usize, i8>::new();
 
         // First, we populate the up_cant sites. This is fairly straightforward since all indices come in pairs meaning that
         // by default they will not be embedded within another up-canted bond.
         // println!("populating map with indices");
         
         SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds, chain_size);
+
+        // println!("excited site indices: {excited_site_indices:?}");
 
         // The sites for the spin chain have been decided and validated in the previous step. We will now populate the spin
         // chain.
@@ -77,7 +79,7 @@ impl<const N: usize> SpinChain<N> {
     /// A function that will generate indices that will have an excited bond
     /// * excited_site_indices: An empty map that will be populated with the index for an excited bond as the key and the excitation type for the bond
     /// * number_of_bonds: The number of bonds that one wishes to generate
-    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<i8, i8>, number_of_bonds: usize, chain_size: usize) {
+    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size: usize) {
 
         let mut rng_seed = rand::thread_rng();
         let mut rng = Mt64::new(rng_seed.gen());
@@ -86,7 +88,7 @@ impl<const N: usize> SpinChain<N> {
 
         // Here we generate n even numbers and n odd numbers that will be paired with eachother as bond sites
         while odd_number_counter < number_of_bonds || even_number_counter < number_of_bonds {
-            let random_number = rng.gen_range(0..chain_size-2) as i8;
+            let random_number = rng.gen_range(0..chain_size-2);
             if random_number %2 == 0 && even_number_counter < number_of_bonds && !excited_site_indices.contains_key(&random_number) {
                 even_number_counter += 1;
                 excited_site_indices.insert(random_number, 2);
@@ -107,7 +109,7 @@ impl<const N: usize> SpinChain<N> {
     // up_cant = 2, down_cant = 3, mismatch = 4
     /// A function that will construct the entire excited chain
     /// * excited_site_indices: a map that contains the sites that will have an excited bond endpoint
-    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<i8, i8>, chain_size: usize) -> Vec<i8> {
+    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<usize, i8>, chain_size: usize) -> Vec<i8> {
         let mut chain = vec![0;chain_size];
         chain[0] = 1;
         chain[chain_size-1] = -1;
@@ -188,7 +190,7 @@ impl<const N: usize> SpinChain<N> {
     /// A preprocessing function that fills in the bonds before Dyck Word generation is performed
     /// * excited_bond_positions: A map that contains the bond positions and the type of bond
     /// * chain: an array representing the spin chain
-    fn populate_excited_sites_of_chain(excited_bond_positions: &mut BTreeMap<i8, i8>, chain: &mut Vec<i8>) {
+    fn populate_excited_sites_of_chain(excited_bond_positions: &mut BTreeMap<usize, i8>, chain: &mut Vec<i8>) {
         for entry  in excited_bond_positions {
             let index = (*entry.0) as usize;
             let excitation_type = *entry.1;
@@ -199,7 +201,7 @@ impl<const N: usize> SpinChain<N> {
     /// A function that handles the special case of populating in the left side of the chain
     /// * chain: an array that represents the spin chain
     /// * first_excited_bond_position: the position of the left most excited bond site
-    fn populate_left_side_of_chain(chain: &mut Vec<i8>, first_excited_bond_position: i8) {
+    fn populate_left_side_of_chain(chain: &mut Vec<i8>, first_excited_bond_position: usize) {
         if first_excited_bond_position == 0 {
             return;
         } else if first_excited_bond_position == 2 {
@@ -245,7 +247,7 @@ impl<const N: usize> SpinChain<N> {
 
 /// A function that ensures the excited site indices are in even, odd, even, odd, even,... order
 /// * excited_site_indices: A map that contains the endpoints for excited bonds and the bond type at that index
-fn validate_site_index_map(excited_site_indices: &mut BTreeMap<i8, i8>) -> bool {
+fn validate_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>) -> bool {
     let mut is_even = true;
     let mut is_valid_map = true;
 
