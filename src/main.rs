@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::env;
+use std::time::{Duration, Instant};
 use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use rand::Rng;
 use rand_mt::Mt64;
@@ -26,6 +27,10 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let run_chains: bool = args.get(1).unwrap().parse().unwrap();
+
+    let start = Instant::now();
+
+    println!("start time: {start:?}");
 
 
     
@@ -69,7 +74,7 @@ fn main() {
                 for _j in 0..number_of_chains {
                     let mut is_alive = true;
                     // info!("generating spin chain");
-                    let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size);
+                    let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size, &mut rng);
                 
                     let mut step_count = 0;
 
@@ -87,9 +92,7 @@ fn main() {
                 current_size+=2;
             }
 
-            let mut directory_string = String::from("./data/runs/run_ss_");
-            directory_string.push_str(current_spin_sector.to_string().as_str());
-            directory_string.push_str(".json");
+            let directory_string = format!("./data/runs/run_ss_{}.json", current_spin_sector);
 
             file_utils::save_data(directory_string, &run_data);
             // let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&current_spin_sector).unwrap();
@@ -99,10 +102,19 @@ fn main() {
 
     }
     // if not wanting to run chains, then perform data analysis
-    // else {
-    // //   let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&spin_sector).unwrap();
-    // //   data_utils::generate_plot(runs_map, &spin_sector);
-    // }
+    else {
+
+        let max_spin_sector: usize = args.get(2).unwrap().parse().unwrap();
+        let chain_size: usize = args.get(3).unwrap().parse().unwrap();
+
+        data_utils::generate_lifetime_plot_mutliple_ss_single_chainsize(max_spin_sector, chain_size);
+
+    //   let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&spin_sector).unwrap();
+    //   data_utils::generate_plot(runs_map, &spin_sector);
+    }
+
+    let time_elapsed = start.elapsed();
+    println!("total time: {time_elapsed:?} ");
 }
 
 fn update_run_data(run_data: &mut RunData, chain_size: usize, steps: u128) {

@@ -3,9 +3,9 @@ use std::collections::{BTreeMap, HashMap};
 use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
 use plotters::{chart::{ChartBuilder, LabelAreaPosition}, prelude::{BitMapBackend, Circle, IntoDrawingArea}, series::LineSeries, style::{BLUE, RED, WHITE}};
 
-use crate::file_utils::{self, Run, ZData};
+use crate::file_utils::{self, Run, RunData, ZData};
 
-pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>, spin_sector: &usize) {
+pub fn generate_lifetime_plot_single_ss(runs_map: &BTreeMap<usize, Vec<Run>>, spin_sector: &usize) {
 
     let mut data: ZData = file_utils::load_data("./data/z_data.txt".to_string());
 
@@ -29,9 +29,7 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>, spin_sector: &usize) 
     //   let v = ContinuousView::new().add(plot).x_range(0.0, 32.0).y_range(0.0, 10000.0);
     //   Page::single(&v).save("chains.svg").unwrap();
 
-    let mut lifetime_file_path = String::from("data/plots/lifetime_");
-    lifetime_file_path.push_str(spin_sector.to_string().as_str());
-    lifetime_file_path.push_str(".png");
+    let lifetime_file_path = format!("data/plots/lifetime_{}.png", spin_sector);
 
     let lifetime_drawing = BitMapBackend::new(lifetime_file_path.as_str(), (1920, 1080))
         .into_drawing_area();
@@ -53,10 +51,8 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>, spin_sector: &usize) 
 
     lifetime_ctx.draw_series(plot_data.iter().map(|point| Circle::new(*point, 5, &BLUE))).unwrap();
 
+    let lifetime_log_file_path = format!("data/plots/lifetime_log_{}.png", spin_sector);
 
-    let mut lifetime_log_file_path = String::from("data/plots/lifetime_log_");
-    lifetime_log_file_path.push_str(spin_sector.to_string().as_str());
-    lifetime_log_file_path.push_str(".png");
     let log_lifetime_drawing = BitMapBackend::new(lifetime_log_file_path.as_str(), (1920, 1080))
     .into_drawing_area();
     log_lifetime_drawing.fill(&WHITE).unwrap();
@@ -154,5 +150,61 @@ pub fn generate_plot(runs_map: &BTreeMap<usize, Vec<Run>>, spin_sector: &usize) 
     //     (-314..314).map(|x| x as f64 / 100.0).map(|x| (x, x.sin())),
     //     &RED
     // )).unwrap();
+
+}
+
+pub fn generate_lifetime_plot_mutliple_ss_single_chainsize(max_spin_sector: usize, chain_size:usize) {
+
+    let mut average_vec: Vec<(f64,f64)> = Vec::new();
+
+    let mut max_y: f64 = 0.0;
+
+    for i in 1..=max_spin_sector {
+        let file_name = format!("./data/runs/run_ss_{}.json", i);
+        let run_data:RunData = file_utils::load_data(file_name);
+
+        let run = run_data.runs.get(&chain_size).unwrap();
+
+        let mut sum = 0;
+        let mut total_number_of_runs:u128 = 0;
+        for step_count in run {
+
+            sum+=step_count;
+            total_number_of_runs+=1;
+
+        }
+        let sum_conversion = sum as f64;
+        let total_number_of_runs_conversion = total_number_of_runs as f64;
+        let average = sum_conversion/total_number_of_runs_conversion;
+        if average > max_y {
+            max_y = average;
+        }
+
+        println!("average for ss {}: {}", i, average);
+        average_vec.push((i as f64,average));
+    }
+
+    let spin_sector_lifetimes = format!("data/plots/ss_{}_cs_{}.png", max_spin_sector, chain_size);
+    
+    let spin_sector_lifetimes_drawing = BitMapBackend::new(spin_sector_lifetimes.as_str(), (1920, 1080))
+    .into_drawing_area();
+    spin_sector_lifetimes_drawing.fill(&WHITE).unwrap();
+
+    // let max_x_log = max_x.ln() + 1.0;
+    // max_y  = max_y + 1000.0;
+    let max_y_log = max_y.ln() + 1.0;
+    let max_x_log = (max_spin_sector as f64).ln() + 1.0;
+
+    let mut spin_sector_lifetime_ctx = ChartBuilder::on(&spin_sector_lifetimes_drawing)
+        .set_label_area_size(LabelAreaPosition::Left, 60)
+        .set_label_area_size(LabelAreaPosition::Bottom, 60)
+        .caption("Fredkin Chain Lifetimes", ("sans-serif", 40))
+        .build_cartesian_2d(0.0f64..max_x_log as f64 + 1.0, 0.0f64..max_y_log)
+        .unwrap();
+
+        spin_sector_lifetime_ctx.configure_mesh().draw().unwrap();
+
+        spin_sector_lifetime_ctx.draw_series(average_vec.iter().map(|point| Circle::new((point.0.ln(), point.1.ln()), 5, &BLUE))).unwrap();
+
 
 }

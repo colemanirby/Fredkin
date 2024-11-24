@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::i8;
 use rand::Rng;
 use rand::prelude::ThreadRng;
-use rand_mt::Mt64;
+use rand_mt::Mt19937GenRand64;
 // Spin chain struct
 #[derive(Clone)]
 pub struct SpinChain<const N: usize> {
@@ -26,7 +26,7 @@ impl<const N: usize> SpinChain<N> {
     /// 
     /// * 'excited_bond_map': A hashmap that contains 3 key-value pairs in the form (bond type, number of bonds). The keys are 0,1,2 for up-canted, down-canted, and mismatch bond types. 
 
-    pub fn new_excited(excited_bond_map: &HashMap<usize, usize>, chain_size: usize) -> Self {
+    pub fn new_excited(excited_bond_map: &HashMap<usize, usize>, chain_size: usize, rng: &mut Mt19937GenRand64) -> Self {
 
         // println!("Making new excited chain");
 
@@ -59,10 +59,12 @@ impl<const N: usize> SpinChain<N> {
         // println!("populating map with indices");
         let mut is_valid_map = false;
 
-        while !is_valid_map {
-            excited_site_indices.clear();
-            is_valid_map = SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds, chain_size);
-        }
+        // while !is_valid_map {
+        //     excited_site_indices.clear();
+        //     is_valid_map = SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds, chain_size, rng);
+        // }
+
+        SpinChain::<N>::populate_up_cant_site_index_map_v2(&mut excited_site_indices, number_of_up_cant_bonds, chain_size, rng);
         
 
         // println!("excited site indices: {excited_site_indices:?}");
@@ -84,10 +86,7 @@ impl<const N: usize> SpinChain<N> {
     /// A function that will generate indices that will have an excited bond
     /// * excited_site_indices: An empty map that will be populated with the index for an excited bond as the key and the excitation type for the bond
     /// * number_of_bonds: The number of bonds that one wishes to generate
-    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size: usize) -> bool {
-
-        let mut rng_seed = rand::thread_rng();
-        let mut rng = Mt64::new(rng_seed.gen());
+    fn populate_up_cant_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size: usize, rng: &mut Mt19937GenRand64) -> bool {
         let mut odd_number_counter = 0;
         let mut even_number_counter = 0;
 
@@ -106,10 +105,113 @@ impl<const N: usize> SpinChain<N> {
         let is_valid_map = validate_site_index_map(excited_site_indices);
         is_valid_map
 
-        // if !is_valid_map {
-        //     excited_site_indices.clear();
-        //     SpinChain::<N>::populate_up_cant_site_index_map(excited_site_indices, number_of_bonds, chain_size);
-        // }
+    }
+
+    fn populate_up_cant_site_index_map_v2(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size:usize, rng: &mut Mt19937GenRand64) {
+        // need to offset chain size. ex: 0 1 2 3 <- chain size is 4 but we ignore sites 2 and 3 -> 0 1. Chain size - 2 = 2, but our indexing is
+        // offset by 1 so we need to account for that meaning that Chain size - 3 is what we need.
+
+        //generate initial even and odd indices
+        let mut initial_even_index: usize = 0;
+        let mut initial_even_index_determined = false;
+        let mut initial_odd_index: usize = chain_size - 3;
+        let mut initial_odd_index_determined = false;
+        let mut number_of_subcovers: usize;
+
+        let mut are_sites_populated = false;
+
+        while !initial_even_index_determined {
+            initial_even_index = rng.gen_range(0..chain_size-2);
+            if initial_even_index % 2 == 0 {
+                initial_even_index_determined = true;
+            }
+        }
+        while !initial_odd_index_determined {
+            initial_odd_index = rng.gen_range(initial_even_index..chain_size - 2);
+            if initial_odd_index % 2 != 0 {
+                initial_odd_index_determined = true;
+            }
+        }
+
+        let mut logical_chain: Vec<usize> = Vec::new();
+
+        for integer in 0..chain_size-2 {
+
+            logical_chain.push(integer);
+
+        }
+
+        // we can now split the chain into multiple logical pieces
+        // 0 1 2 .. N - m N - m + 1.. N-3 N-2 N-1 N
+        // one piece will be from [0..inital_even_index - 1][initial_even_index..initial_odd_index][initial_odd_index + 1.. N-2]
+
+        let mut chain_pieces: Vec<&[usize]> = Vec::new();
+        if initial_even_index == 0 {     
+            // If we have i_e_i = 0, then we will only need to split the chain once maximum. If we also have i_o_i = chain_size - 3 we don't need to do
+            // any splitting
+            if initial_odd_index == chain_size - 3 {
+                chain_pieces.push(&logical_chain);
+                number_of_subcovers = 1;
+            } else {
+                let (left, right) =  logical_chain.split_at(initial_odd_index+1);
+                number_of_subcovers = 2;
+                chain_pieces.push(left);
+                chain_pieces.push(right);
+            }
+        } else {
+            // if we have i_o_i == chain_size -3 we will only need to split once. Otherwise we will have split the chain into 3 pieces
+            if initial_odd_index == chain_size - 3 {
+                let (left, right) = logical_chain.split_at(initial_even_index);
+                chain_pieces.push(left);
+                chain_pieces.push(right);
+                number_of_subcovers = 2;
+            } else {
+                let (left, right) = logical_chain.split_at(initial_even_index);
+                chain_pieces.push(left);
+                // the split has created a new logical chain called "right". We need to offset the indexing by the length of the chain
+                // called "left" since the original chain structure was permanently modified
+                let (middle, right) = right.split_at(initial_odd_index+1 - left.len());
+                chain_pieces.push(middle);
+                chain_pieces.push(right);     
+                number_of_subcovers = 3;
+            }
+        }
+
+        if number_of_subcovers < number_of_bonds {
+            while !are_sites_populated {
+                let random_piece = rng.gen_range(0..chain_pieces.len());
+                let chain_to_split = chain_pieces.remove(random_piece);
+                let random_odd = rng.gen_range(0..chain_to_split.len());
+                // we do not want to attempt to split chains that only have 2 elements
+                // nor do we want to split a chain at its endpoint since it will give us an
+                // empty slice.
+                // Because we remove the "chain to split" from the "chain pieces"
+                // we need to be sure that we re-insert them if they are not modified at all
+                // otherwise we will lose access to them once the loop continues.
+                if random_odd % 2 != 0 && random_odd != chain_to_split.len() - 1{
+                    if chain_to_split.len() > 2 {
+                        let (left, right) = chain_to_split.split_at(random_odd+1);
+                        number_of_subcovers+=1;
+                        chain_pieces.push(left);
+                        chain_pieces.push(right);
+                    } else {
+                        chain_pieces.push(chain_to_split);
+                    }
+                    if number_of_subcovers >= number_of_bonds {
+                        are_sites_populated = true;
+                
+                    }  
+                } else {
+                    chain_pieces.push(chain_to_split);
+                }
+            }
+        }
+        for _i in 0..number_of_bonds {
+            let random_index = rng.gen_range(0..chain_pieces.len());
+            let random_endpoints = chain_pieces.remove(random_index);
+            excited_site_indices.insert(*random_endpoints.first().unwrap(), 2);
+            excited_site_indices.insert(*random_endpoints.last().unwrap(), 2);
+        }
     }
 
     // up_cant = 2, down_cant = 3, mismatch = 4
@@ -250,6 +352,15 @@ impl<const N: usize> SpinChain<N> {
 
     }
 }
+
+fn split_chain(index: usize, number_of_bonds: &mut usize, number_of_subcovers: &mut usize, chain: &mut Vec<&[usize]>, chain_to_split: &mut &[usize]) -> bool {
+
+    let mut is_enough_splits = false;
+
+    is_enough_splits
+
+}
+
 
 /// A function that ensures the excited site indices are in even, odd, even, odd, even,... order
 /// * excited_site_indices: A map that contains the endpoints for excited bonds and the bond type at that index
