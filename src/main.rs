@@ -51,8 +51,6 @@ fn main() {
 
     if run_chains {
         
-
-        info!("testing logging");
         let max_size: usize = args.get(2).unwrap().parse().unwrap();
 
         let spin_sector_max: usize = args.get(3).unwrap().parse().unwrap(); 

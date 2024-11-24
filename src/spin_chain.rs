@@ -353,15 +353,6 @@ impl<const N: usize> SpinChain<N> {
     }
 }
 
-fn split_chain(index: usize, number_of_bonds: &mut usize, number_of_subcovers: &mut usize, chain: &mut Vec<&[usize]>, chain_to_split: &mut &[usize]) -> bool {
-
-    let mut is_enough_splits = false;
-
-    is_enough_splits
-
-}
-
-
 /// A function that ensures the excited site indices are in even, odd, even, odd, even,... order
 /// * excited_site_indices: A map that contains the endpoints for excited bonds and the bond type at that index
 fn validate_site_index_map(excited_site_indices: &mut BTreeMap<usize, i8>) -> bool {
