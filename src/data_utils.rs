@@ -153,13 +153,13 @@ pub fn generate_lifetime_plot_single_ss(runs_map: &BTreeMap<usize, Vec<Run>>, sp
 
 }
 
-pub fn generate_lifetime_plot_mutliple_ss_single_chainsize(max_spin_sector: usize, chain_size:usize) {
+pub fn generate_lifetime_plot_mutliple_ss_single_chainsize_log(min_spin_sector: usize, max_spin_sector: usize, chain_size:usize) {
 
     let mut average_vec: Vec<(f64,f64)> = Vec::new();
 
     let mut max_y: f64 = 0.0;
 
-    for i in 1..=max_spin_sector {
+    for i in min_spin_sector..=max_spin_sector {
         let file_name = format!("./data/runs/run_ss_{}.json", i);
         let run_data:RunData = file_utils::load_data(file_name);
 
@@ -184,7 +184,7 @@ pub fn generate_lifetime_plot_mutliple_ss_single_chainsize(max_spin_sector: usiz
         average_vec.push((i as f64,average));
     }
 
-    let spin_sector_lifetimes = format!("data/plots/ss_{}_cs_{}.png", max_spin_sector, chain_size);
+    let spin_sector_lifetimes = format!("data/plots/ss_{}_cs_{}_log.png", max_spin_sector, chain_size);
     
     let spin_sector_lifetimes_drawing = BitMapBackend::new(spin_sector_lifetimes.as_str(), (1920, 1080))
     .into_drawing_area();
@@ -205,6 +205,67 @@ pub fn generate_lifetime_plot_mutliple_ss_single_chainsize(max_spin_sector: usiz
         spin_sector_lifetime_ctx.configure_mesh().draw().unwrap();
 
         spin_sector_lifetime_ctx.draw_series(average_vec.iter().map(|point| Circle::new((point.0.ln(), point.1.ln()), 5, &BLUE))).unwrap();
+
+
+}
+
+pub fn generate_lifetime_plot_mutliple_ss_single_chainsize(min_spin_sector: usize, max_spin_sector: usize, chain_size:usize) {
+
+    let mut average_vec: Vec<(f64,f64)> = Vec::new();
+
+    let mut max_y: f64 = 0.0;
+    let mut min_y: f64 = 0.0;
+
+    for i in min_spin_sector..=max_spin_sector {
+        let file_name = format!("./data/runs/run_ss_{}.json", i);
+        let run_data:RunData = file_utils::load_data(file_name);
+
+        let run = run_data.runs.get(&chain_size).unwrap();
+
+        let mut sum = 0;
+        let mut total_number_of_runs:u128 = 0;
+        for step_count in run {
+
+            sum+=step_count;
+            total_number_of_runs+=1;
+
+        }
+        let sum_conversion = sum as f64;
+        let total_number_of_runs_conversion = total_number_of_runs as f64;
+        let average = sum_conversion/total_number_of_runs_conversion;
+        if i == min_spin_sector {
+            min_y = average;
+        } else if average < min_y {
+            min_y = average;
+        } 
+        
+        if average > max_y {
+            max_y = average;
+        }
+
+        println!("average for ss {}: {}", i, average);
+        average_vec.push((i as f64,average));
+    }
+
+    let spin_sector_lifetimes = format!("data/plots/ss_{}_cs_{}.png", max_spin_sector, chain_size);
+    
+    let spin_sector_lifetimes_drawing = BitMapBackend::new(spin_sector_lifetimes.as_str(), (1920, 1080))
+    .into_drawing_area();
+    spin_sector_lifetimes_drawing.fill(&WHITE).unwrap();
+
+    let max_x = max_spin_sector as f64 + 1.0;
+    let min_x = min_spin_sector as f64;
+
+    let mut spin_sector_lifetime_ctx = ChartBuilder::on(&spin_sector_lifetimes_drawing)
+        .set_label_area_size(LabelAreaPosition::Left, 60)
+        .set_label_area_size(LabelAreaPosition::Bottom, 60)
+        .caption("Fredkin Chain Lifetimes", ("sans-serif", 40))
+        .build_cartesian_2d(min_x..max_x, 950f64..max_y)
+        .unwrap();
+
+        spin_sector_lifetime_ctx.configure_mesh().draw().unwrap();
+
+        spin_sector_lifetime_ctx.draw_series(average_vec.iter().map(|point| Circle::new((point.0, point.1), 5, &BLUE))).unwrap();
 
 
 }

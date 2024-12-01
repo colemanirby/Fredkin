@@ -1,3 +1,4 @@
+use core::num;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -108,65 +109,65 @@ impl<const N: usize> SpinChain<N> {
     }
 
     fn populate_up_cant_site_index_map_v2(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size:usize, rng: &mut Mt19937GenRand64) {
-        // need to offset chain size. ex: 0 1 2 3 <- chain size is 4 but we ignore sites 2 and 3 -> 0 1. Chain size - 2 = 2, but our indexing is
-        // offset by 1 so we need to account for that meaning that Chain size - 3 is what we need.
 
-        //generate initial even and odd indices
+        let mut available_sites: Vec<usize> = Vec::new();
+
+        for integer in 0..chain_size-2 {
+
+            available_sites.push(integer);
+
+        }
+
+        let maximum_index = available_sites.len();
+
+        //i_e_i
         let mut initial_even_index: usize = 0;
         let mut initial_even_index_determined = false;
-        let mut initial_odd_index: usize = chain_size - 3;
+        //i_o_i
+        let mut initial_odd_index: usize = maximum_index;
         let mut initial_odd_index_determined = false;
         let mut number_of_subcovers: usize;
 
         let mut are_sites_populated = false;
 
         while !initial_even_index_determined {
-            initial_even_index = rng.gen_range(0..chain_size-2);
+            initial_even_index = rng.gen_range(0..maximum_index);
             if initial_even_index % 2 == 0 {
                 initial_even_index_determined = true;
             }
         }
         while !initial_odd_index_determined {
-            initial_odd_index = rng.gen_range(initial_even_index..chain_size - 2);
+            initial_odd_index = rng.gen_range(initial_even_index..maximum_index);
             if initial_odd_index % 2 != 0 {
                 initial_odd_index_determined = true;
             }
         }
 
-        let mut logical_chain: Vec<usize> = Vec::new();
-
-        for integer in 0..chain_size-2 {
-
-            logical_chain.push(integer);
-
-        }
-
         // we can now split the chain into multiple logical pieces
         // 0 1 2 .. N - m N - m + 1.. N-3 N-2 N-1 N
         // one piece will be from [0..inital_even_index - 1][initial_even_index..initial_odd_index][initial_odd_index + 1.. N-2]
-
         let mut chain_pieces: Vec<&[usize]> = Vec::new();
         if initial_even_index == 0 {     
-            // If we have i_e_i = 0, then we will only need to split the chain once maximum. If we also have i_o_i = chain_size - 3 we don't need to do
-            // any splitting
-            if initial_odd_index == chain_size - 3 {
-                chain_pieces.push(&logical_chain);
+            // If we have i_e_i = 0, then we will only need to split the chain once maximum. If we also have i_o_i = maximum index we don't need to do
+            // any splitting since both endpoints will now be part of a bond.
+            if initial_odd_index == maximum_index - 1 {
+                chain_pieces.push(&available_sites);
                 number_of_subcovers = 1;
             } else {
-                let (left, right) =  logical_chain.split_at(initial_odd_index+1);
-                number_of_subcovers = 2;
+                let (left, right) =  available_sites.split_at(initial_odd_index+1);
                 chain_pieces.push(left);
                 chain_pieces.push(right);
+                number_of_subcovers = 2;
             }
         } else {
             // if we have i_o_i == chain_size -3 we will only need to split once. Otherwise we will have split the chain into 3 pieces
-            if initial_odd_index == chain_size - 3 {
-                let (left, right) = logical_chain.split_at(initial_even_index);
+            if initial_odd_index == maximum_index - 1 {
+                let (left, right) = available_sites.split_at(initial_even_index);
                 chain_pieces.push(left);
                 chain_pieces.push(right);
                 number_of_subcovers = 2;
             } else {
-                let (left, right) = logical_chain.split_at(initial_even_index);
+                let (left, right) = available_sites.split_at(initial_even_index);
                 chain_pieces.push(left);
                 // the split has created a new logical chain called "right". We need to offset the indexing by the length of the chain
                 // called "left" since the original chain structure was permanently modified
@@ -177,7 +178,9 @@ impl<const N: usize> SpinChain<N> {
             }
         }
 
+        let mut two_entry_vecs: Vec<&[usize]>= Vec::new();
         if number_of_subcovers < number_of_bonds {
+
             while !are_sites_populated {
                 let random_piece = rng.gen_range(0..chain_pieces.len());
                 let chain_to_split = chain_pieces.remove(random_piece);
@@ -191,11 +194,22 @@ impl<const N: usize> SpinChain<N> {
                 if random_odd % 2 != 0 && random_odd != chain_to_split.len() - 1{
                     if chain_to_split.len() > 2 {
                         let (left, right) = chain_to_split.split_at(random_odd+1);
+                        if left.len() <= 2 && right.len() <= 2{
+                            two_entry_vecs.push(left);
+                            two_entry_vecs.push(right);
+                        } else if left.len() <= 2 && right.len() > 2 {
+                            two_entry_vecs.push(left);
+                            chain_pieces.push(right);
+                        } else if left.len() > 2 && right. len() <= 2 {
+                            chain_pieces.push(left);
+                            two_entry_vecs.push(right);
+                        } else {
+                            chain_pieces.push(left);
+                            chain_pieces.push(right);
+                        }
                         number_of_subcovers+=1;
-                        chain_pieces.push(left);
-                        chain_pieces.push(right);
                     } else {
-                        chain_pieces.push(chain_to_split);
+                        two_entry_vecs.push(chain_to_split);
                     }
                     if number_of_subcovers >= number_of_bonds {
                         are_sites_populated = true;
@@ -206,11 +220,47 @@ impl<const N: usize> SpinChain<N> {
                 }
             }
         }
+
+       chain_pieces.append(&mut two_entry_vecs);
+
         for _i in 0..number_of_bonds {
             let random_index = rng.gen_range(0..chain_pieces.len());
             let random_endpoints = chain_pieces.remove(random_index);
             excited_site_indices.insert(*random_endpoints.first().unwrap(), 2);
             excited_site_indices.insert(*random_endpoints.last().unwrap(), 2);
+        }
+    }
+
+    fn populate_up_cant_site_index_map_k_beach (excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size:usize, rng: &mut Mt19937GenRand64) {
+
+        let mut me: f64 = 0.0;
+        let mut mo: f64 = 0.0;
+
+        let n_o_b_f64: f64 = number_of_bonds as f64;
+        let c_s_f64: f64 = chain_size as f64;
+
+        for  i in 0.. N
+        {
+            let rand: f64 = rng.gen_range(0.0..1f64);
+            let i_f64 = i as f64;
+           if i%2 == 0
+           { // even case
+              let p = 2.0*(n_o_b_f64-me)/(c_s_f64-2.0-i_f64);
+              if rand < p
+              {
+                 excited_site_indices.insert(i, 2);
+                 me+=1.0;
+              }
+           }
+           else
+           { // odd case
+              let p = 2.0*(n_o_b_f64-mo)/(c_s_f64-1.0-i_f64);
+              if rand < p 
+              {
+                 excited_site_indices.insert(i, 2);
+                 mo+=1.0;
+              }
+           }
         }
     }
 
