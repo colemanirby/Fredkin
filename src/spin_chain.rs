@@ -233,33 +233,38 @@ impl<const N: usize> SpinChain<N> {
 
     fn populate_up_cant_site_index_map_k_beach (excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size:usize, rng: &mut Mt19937GenRand64) {
 
-        let mut me: f64 = 0.0;
-        let mut mo: f64 = 0.0;
+        let mut mo:usize = 0;
+        let mut me:usize = 0;
+        
+        let mut i:usize = 0;
 
-        let n_o_b_f64: f64 = number_of_bonds as f64;
-        let c_s_f64: f64 = chain_size as f64;
+        while me != number_of_bonds || mo != number_of_bonds {
 
-        for  i in 0.. N
-        {
             let rand: f64 = rng.gen_range(0.0..1f64);
-            let i_f64 = i as f64;
-           if i%2 == 0
-           { // even case
-              let p = 2.0*(n_o_b_f64-me)/(c_s_f64-2.0-i_f64);
-              if rand < p
-              {
-                 excited_site_indices.insert(i, 2);
-                 me+=1.0;
-              }
-           }
-           else
-           { // odd case
-              let p = 2.0*(n_o_b_f64-mo)/(c_s_f64-1.0-i_f64);
-              if rand < p 
-              {
-                 excited_site_indices.insert(i, 2);
-                 mo+=1.0;
-              }
+
+            if i%2 == 0 { // even case
+                let num = (2 * (number_of_bonds - me)) as f64;
+                let den = (chain_size - 2 - i) as f64;
+                let p = num/den;
+                if rand < p {
+                    excited_site_indices.insert(i, 2);
+                    me+=1;
+                    i += 1;
+                } else {
+                    i += 2;
+                }
+           } else { // odd case
+                let num = (2* (number_of_bonds - mo)) as f64;
+                let den = (chain_size - 1 - i) as f64;
+                let p = num/den;
+                if rand < p {
+                   excited_site_indices.insert(i, 2);
+                   mo+=1;
+                   i += 1;
+                } else {
+
+                  i += 2;
+                }
            }
         }
     }
