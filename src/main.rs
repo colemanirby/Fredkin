@@ -1,14 +1,12 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::env;
-use std::time::{Duration, Instant};
-use plotlib::{page::Page, repr::Plot, style::{PointMarker, PointStyle}, view::ContinuousView};
+use std::time::Instant;
 use rand::Rng;
 use rand_mt::Mt64;
 use spin_chain::SpinChain;
 use rand::prelude::ThreadRng;
-use file_utils::{RunData, Run};
-use log::{logger, LevelFilter};
-use log::info;
+use file_utils::RunData;
+use log::{info, LevelFilter};
 mod spin_chain;
 mod calculation_utils;
 mod file_utils;
@@ -32,6 +30,7 @@ fn main() {
 
     println!("start time: {start:?}");
 
+    simple_logging::log_to_file("fredkin_logs.log", LevelFilter::Info).unwrap();
 
     
     
@@ -66,16 +65,19 @@ fn main() {
 
         for current_spin_sector in spin_sector_min..=spin_sector_max {
             let mut run_data: RunData = RunData::new();
+            info!("spin sector: {current_spin_sector}");
             println!("spin sector: {current_spin_sector}");
             excited_bond_map.insert(0, current_spin_sector);
 
-            // let mut spin_chain_vec: Vec<SpinChain<CHAIN_SIZE>> = Vec::new();
             let mut current_size: usize;
-            if min_chain_size == 0 {
-                current_size = (2 * current_spin_sector) + 2;
+            let min_chain_size_label: usize;
+            let hard_limit = (2 * current_spin_sector) + 2;
+            if min_chain_size < hard_limit {
+                current_size = hard_limit;
+                min_chain_size_label = hard_limit;
             } else {
-
                 current_size = min_chain_size;
+                min_chain_size_label = min_chain_size;
             }
             
 
@@ -98,10 +100,11 @@ fn main() {
                     
                 }
                 println!("completed spin chain of size {current_size}");
+                info!("completed spin chain of size {current_size}");
                 current_size+=2;
             }
 
-            let directory_string = format!("./data/runs/run_ss_{}.json", current_spin_sector);
+            let directory_string = format!("./data/runs/run_ss_{}_cs_{}_{}.json", current_spin_sector, min_chain_size_label, max_size);
 
             file_utils::save_data(directory_string, &run_data);
             // let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&current_spin_sector).unwrap();

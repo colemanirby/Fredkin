@@ -65,7 +65,7 @@ impl<const N: usize> SpinChain<N> {
         //     is_valid_map = SpinChain::<N>::populate_up_cant_site_index_map(&mut excited_site_indices, number_of_up_cant_bonds, chain_size, rng);
         // }
 
-        SpinChain::<N>::populate_up_cant_site_index_map_v2(&mut excited_site_indices, number_of_up_cant_bonds, chain_size, rng);
+        SpinChain::<N>::populate_up_cant_site_index_map_k_beach(&mut excited_site_indices, number_of_up_cant_bonds, chain_size, rng);
         
 
         // println!("excited site indices: {excited_site_indices:?}");
@@ -145,7 +145,10 @@ impl<const N: usize> SpinChain<N> {
 
         // we can now split the chain into multiple logical pieces
         // 0 1 2 .. N - m N - m + 1.. N-3 N-2 N-1 N
-        // one piece will be from [0..inital_even_index - 1][initial_even_index..initial_odd_index][initial_odd_index + 1.. N-2]
+        // There are three possible configurations after the initial split:
+        // one like [0..inital_even_index - 1][initial_even_index..initial_odd_index][initial_odd_index + 1.. N-2]
+        // or one like [0..initial_odd_index][initial_odd_index...N-2]
+        // or [0...N-2]
         let mut chain_pieces: Vec<&[usize]> = Vec::new();
         if initial_even_index == 0 {     
             // If we have i_e_i = 0, then we will only need to split the chain once maximum. If we also have i_o_i = maximum index we don't need to do
@@ -231,7 +234,7 @@ impl<const N: usize> SpinChain<N> {
         }
     }
 
-    fn populate_up_cant_site_index_map_k_beach (excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size:usize, rng: &mut Mt19937GenRand64) {
+    fn populate_up_cant_site_index_map_k_beach(excited_site_indices: &mut BTreeMap<usize, i8>, number_of_bonds: usize, chain_size:usize, rng: &mut Mt19937GenRand64) {
 
         let mut mo:usize = 0;
         let mut me:usize = 0;
