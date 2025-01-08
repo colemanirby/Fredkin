@@ -17,24 +17,18 @@ const CHAIN_SIZE:usize = 42;
 
 
 fn main() {
-    // These should be command line arguments
-    
-    // let max_size = 64;
-    //
 
+    // Args: storage directory, # of trials, min chain size, max chain size, min spin sector, max spin sector
+    // Local storage directory: ./data/runs
     let args: Vec<String> = env::args().collect();
 
-    let run_chains: bool = args.get(1).unwrap().parse().unwrap();
+    let storage_directory: &String = args.get(1).unwrap();
 
     let start = Instant::now();
 
     println!("start time: {start:?}");
 
     simple_logging::log_to_file("fredkin_logs.log", LevelFilter::Info).unwrap();
-
-    
-    
-    // let run_chains = false;
 
     let mut excited_bond_map:HashMap<usize, usize> = HashMap::<usize, usize>::new();
     excited_bond_map.insert(0, 1);
@@ -47,88 +41,56 @@ fn main() {
         spin_sector += entry.1;
     }
 
-    if run_chains {
         
-        let number_of_trials: usize = args.get(2).unwrap().parse().unwrap();
-        let min_chain_size: usize = args.get(3).unwrap_or(&"0".to_string()).parse().unwrap();
-        let max_size: usize = args.get(4).unwrap().parse().unwrap();
-        
-
-        let spin_sector_min: usize = args.get(5).unwrap().parse().unwrap();
-        let spin_sector_max: usize = args.get(6).unwrap().parse().unwrap(); 
-        
-
-        println!("Running chains from {min_chain_size} to size {max_size} with each chain size running {number_of_trials} times and spin sector from {spin_sector_min} to {spin_sector_max}");
-
-        let mut rng_seed: ThreadRng = rand::thread_rng();
-        let mut rng = Mt64::new(rng_seed.gen());
-
-        for current_spin_sector in spin_sector_min..=spin_sector_max {
-            let mut run_data: RunData = RunData::new();
-            info!("spin sector: {current_spin_sector}");
-            println!("spin sector: {current_spin_sector}");
-            excited_bond_map.insert(0, current_spin_sector);
-
-            let mut current_size: usize;
-            let min_chain_size_label: usize;
-            let hard_limit = (2 * current_spin_sector) + 2;
-            if min_chain_size < hard_limit {
-                current_size = hard_limit;
-                min_chain_size_label = hard_limit;
-            } else {
-                current_size = min_chain_size;
-                min_chain_size_label = min_chain_size;
-            }
-            
-
-            while current_size <= max_size {
-                for _j in 0..number_of_trials {
-                    let mut is_alive = true;
-                    // info!("generating spin chain");
-                    let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size, &mut rng);
-                
-                    let mut step_count = 0;
-
-                
-                    while is_alive {
-                        let random_index = rng.gen_range(0..current_size - 2);
-                        is_alive = evolve_chain(&mut spin_chain.chain, random_index, current_size);
-                        step_count += 1;
-                    }
-
-                    update_run_data(&mut run_data, current_size, step_count);
-                    
-                }
-                println!("completed spin chain of size {current_size}");
-                info!("completed spin chain of size {current_size}");
-                current_size+=2;
-            }
-
-            let directory_string = format!("./data/runs/run_ss_{}_cs_{}_{}.json", current_spin_sector, min_chain_size_label, max_size);
-
-            file_utils::save_data(directory_string, &run_data);
-            // let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&current_spin_sector).unwrap();
-            // data_utils::generate_plot(runs_map, &current_spin_sector);
+    let number_of_trials: usize = args.get(2).unwrap().parse().unwrap();
+    let min_chain_size: usize = args.get(3).unwrap_or(&"0".to_string()).parse().unwrap();
+    let max_size: usize = args.get(4).unwrap().parse().unwrap();
+    
+    let spin_sector_min: usize = args.get(5).unwrap().parse().unwrap();
+    let spin_sector_max: usize = args.get(6).unwrap().parse().unwrap(); 
+    
+    println!("Running chains from {min_chain_size} to size {max_size} with each chain size running {number_of_trials} times and spin sector from {spin_sector_min} to {spin_sector_max}");
+    let mut rng_seed: ThreadRng = rand::thread_rng();
+    let mut rng = Mt64::new(rng_seed.gen());
+    for current_spin_sector in spin_sector_min..=spin_sector_max {
+        let mut run_data: RunData = RunData::new();
+        info!("spin sector: {current_spin_sector}");
+        println!("spin sector: {current_spin_sector}");
+        excited_bond_map.insert(0, current_spin_sector);
+        let mut current_size: usize;
+        let min_chain_size_label: usize;
+        let hard_limit = (2 * current_spin_sector) + 2;
+        if min_chain_size < hard_limit {
+            current_size = hard_limit;
+            min_chain_size_label = hard_limit;
+        } else {
+            current_size = min_chain_size;
+            min_chain_size_label = min_chain_size;
         }
-
-
-    }
-    // if not wanting to run chains, then perform data analysis
-    else {
-
-        let chain_size: usize = args.get(2).unwrap().parse().unwrap();
-        let spin_sector_min: usize = args.get(3).unwrap().parse().unwrap();
-        let spin_sector_max: usize = args.get(4).unwrap().parse().unwrap(); 
         
-
-        data_utils::generate_lifetime_plot_mutliple_ss_single_chainsize(spin_sector_min, spin_sector_max, chain_size);
-
-    //   let runs_map: &BTreeMap<usize, Vec<Run>> = run_data.runs.get(&spin_sector).unwrap();
-    //   data_utils::generate_plot(runs_map, &spin_sector);
+        while current_size <= max_size {
+            for _j in 0..number_of_trials {
+                let mut is_alive = true;
+                // info!("generating spin chain");
+                let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size, &mut rng);
+            
+                let mut step_count = 0;
+            
+                while is_alive {
+                    let random_index = rng.gen_range(0..current_size - 2);
+                    is_alive = evolve_chain(&mut spin_chain.chain, random_index, current_size);
+                    step_count += 1;
+                }
+                update_run_data(&mut run_data, current_size, step_count);
+                
+            }
+            println!("completed spin chain of size {current_size}");
+            info!("completed spin chain of size {current_size}");
+            current_size+=2;
+        }
+        let directory_string = format!("{}/run_ss_{}_cs_{}_{}.json", storage_directory, current_spin_sector, min_chain_size_label, max_size);
+        file_utils::save_data(directory_string, &run_data);
     }
-
-    let time_elapsed = start.elapsed();
-    println!("total time: {time_elapsed:?} ");
 }
 
 fn update_run_data(run_data: &mut RunData, chain_size: usize, steps: u128) {
