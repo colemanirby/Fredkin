@@ -73,6 +73,7 @@ fn main() {
                 let mut is_alive = true;
                 // info!("generating spin chain");
                 let mut spin_chain: SpinChain<CHAIN_SIZE> = SpinChain::new_excited(&excited_bond_map, current_size, &mut rng);
+                //print_chain(&spin_chain.chain);
             
                 let mut step_count = 0;
             
@@ -81,8 +82,7 @@ fn main() {
                     is_alive = evolve_chain(&mut spin_chain.chain, random_index, current_size);
                     step_count += 1;
                 }
-                update_run_data(&mut run_data, current_size, step_count);
-                
+                update_run_data(&mut run_data, current_size, step_count); 
             }
             println!("completed spin chain of size {current_size}");
             info!("completed spin chain of size {current_size}");
@@ -92,6 +92,23 @@ fn main() {
         file_utils::save_data(directory_string, &run_data);
     }
 }
+
+// fn print_chain(chain: &Vec<i8>) {
+
+//     for spin in chain {
+//         if *spin == 1 {
+//             print!("(")
+//         } else if *spin == 2 {
+//             print!("[")
+//         } else if *spin == -1 {
+//             print!(")")
+//         } else {
+//             print!("?")
+//         }
+//     }
+//     println!();
+
+// }
 
 fn update_run_data(run_data: &mut RunData, chain_size: usize, steps: u128) {
     let contains_chain_size = run_data.runs.contains_key(&chain_size);

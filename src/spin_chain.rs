@@ -1,11 +1,9 @@
-use core::num;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::i8;
 use rand::Rng;
-use rand::prelude::ThreadRng;
 use rand_mt::Mt19937GenRand64;
 // Spin chain struct
 #[derive(Clone)]
@@ -72,7 +70,7 @@ impl<const N: usize> SpinChain<N> {
 
         // The sites for the spin chain have been decided and validated in the previous step. We will now populate the spin
         // chain.
-        let chain = SpinChain::<N>::construct_excited_chain(&mut excited_site_indices, chain_size);
+        let chain = SpinChain::<N>::construct_excited_chain(&mut excited_site_indices, chain_size, rng);
 
 
         let mut hasher = DefaultHasher::new();
@@ -243,7 +241,7 @@ impl<const N: usize> SpinChain<N> {
 
         while me != number_of_bonds || mo != number_of_bonds {
 
-            let rand: f64 = rng.gen_range(0.0..1f64);
+            let rand: f64 = rng.gen_range(0.0f64..1f64);
 
             if i%2 == 0 { // even case
                 let num = (2 * (number_of_bonds - me)) as f64;
@@ -275,7 +273,7 @@ impl<const N: usize> SpinChain<N> {
     // up_cant = 2, down_cant = 3, mismatch = 4
     /// A function that will construct the entire excited chain
     /// * excited_site_indices: a map that contains the sites that will have an excited bond endpoint
-    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<usize, i8>, chain_size: usize) -> Vec<i8> {
+    fn construct_excited_chain(excited_site_indices: &mut BTreeMap<usize, i8>, chain_size: usize, rng: &mut Mt19937GenRand64) -> Vec<i8> {
         let mut chain = vec![0;chain_size];
         chain[0] = 1;
         chain[chain_size-1] = -1;
@@ -286,7 +284,7 @@ impl<const N: usize> SpinChain<N> {
 
         SpinChain::<N>::populate_excited_sites_of_chain(excited_site_indices, &mut chain);
 
-        SpinChain::<N>::populate_left_side_of_chain(&mut chain, first_excited_bond_position);
+        SpinChain::<N>::populate_left_side_of_chain(&mut chain, first_excited_bond_position, rng);
 
         let excited_indices_vec = Vec::from_iter(excited_site_indices.keys());
 
@@ -298,7 +296,7 @@ impl<const N: usize> SpinChain<N> {
             let right_bound = *excited_indices_vec.get(index).unwrap();
             let right_bound_index = *right_bound as usize;
             let inner_length =  (right_bound_index - left_bound_index - 1) as u32;
-            SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, left_bound_index+1, right_bound_index, inner_length);           
+            SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, left_bound_index+1, right_bound_index, inner_length, rng);           
             index += 1;
         }
 
@@ -306,7 +304,7 @@ impl<const N: usize> SpinChain<N> {
         let last_excited_bond_position = *excited_site_indices.last_key_value().unwrap().0 as usize;
 
         let right_side_length = (chain_size - last_excited_bond_position -1) as u32;
-        SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, last_excited_bond_position+1, chain_size, right_side_length);
+        SpinChain::<N>::generate_arbitrary_dyck_words(&mut chain, last_excited_bond_position+1, chain_size, right_side_length, rng);
 
         chain
         
@@ -315,9 +313,9 @@ impl<const N: usize> SpinChain<N> {
     // A function that will generate valid Dyck Word States in some given interval [left_bound, right_bound)
     /// * chain: an array that will represent the spin chain
     /// * left_bound: the first spin that will be included in the Dyck word state
-    /// * right_bound: the spin after the last spin that will be included in the Dyck word state
+    /// * right_bound: the spin after the last spin that will be included in the Dyck word state.
     /// * length: the size of then interval
-    fn generate_arbitrary_dyck_words(chain: &mut Vec<i8>, left_bound: usize, right_bound: usize, length: u32) {
+    fn generate_arbitrary_dyck_words(chain: &mut Vec<i8>, left_bound: usize, right_bound: usize, length: u32, rng: &mut Mt19937GenRand64) {
 
         // offset index to keep probability calulations correct
         let mut current_index = 1;
@@ -335,8 +333,8 @@ impl<const N: usize> SpinChain<N> {
             chain[right_bound - 1] = -1;
             for i in left_bound+1..right_bound {
                 let prob_up = calculate_next_spin_prob(length, current_index, height);
-                let is_up_spin = determine_next_spin(prob_up, 15);
-                if is_up_spin {
+                let random_num:f64 = rng.gen_range(0f64..=1f64);
+                if random_num <= prob_up {
                     chain[i] = 1;
                     height += 1;
                 } else {
@@ -367,7 +365,7 @@ impl<const N: usize> SpinChain<N> {
     /// A function that handles the special case of populating in the left side of the chain
     /// * chain: an array that represents the spin chain
     /// * first_excited_bond_position: the position of the left most excited bond site
-    fn populate_left_side_of_chain(chain: &mut Vec<i8>, first_excited_bond_position: usize) {
+    fn populate_left_side_of_chain(chain: &mut Vec<i8>, first_excited_bond_position: usize, rng: &mut Mt19937GenRand64) {
         if first_excited_bond_position == 0 {
             return;
         } else if first_excited_bond_position == 2 {
@@ -375,11 +373,10 @@ impl<const N: usize> SpinChain<N> {
             return;
         }
 
-
         let right_bound = first_excited_bond_position as usize;
         let length = right_bound as u32;
 
-        SpinChain::<N>::generate_arbitrary_dyck_words(chain, 0, right_bound, length);
+        SpinChain::<N>::generate_arbitrary_dyck_words(chain, 0, right_bound, length, rng);
 
     }
 
@@ -452,24 +449,3 @@ fn calculate_next_spin_prob(length: u32, current_index: u32, height: u32) -> f64
     spin_up_prob
 }
 
-/// Determines the next spin via taking random samples from the unit line.
-/// * prob_up: the probability that the particle will have an up spin
-/// * trials: how many times do you want to sample in order to determine if the particle is spin up or spin down
-fn determine_next_spin(prob_up: f64, trials: u128) -> bool {
-
-    let mut up_spin:u128 = 0;
-    let mut down_spin:u128 = 0;
-    let mut rng: ThreadRng = rand::thread_rng();
-
-    for _i in 1..trials {
-
-        let random_num:f64 = rng.gen();
-        if random_num <= prob_up {
-            up_spin += 1;
-        } else {
-            down_spin +=1;
-        }
-    }
-
-    return up_spin > down_spin;
-}
