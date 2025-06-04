@@ -142,6 +142,12 @@ pub fn print_degen_counts(hash_chain_map: &HashMap<u64, (u128,[i8;CHAIN_SIZE],[c
 
 /// A function that evolves the fredkin chain. It chooses the sites i, i+1, and i+2 and attempts to perform the fredkin swap.
 /// * chain: the spin chain that is to be evolved
+/// If you are trying to interpret the chain at every state then this code is bugged.
+/// Suppose you have something like 2 2 1 -1 and you select the 2 1 -1 to be swapped.
+/// The code will correctly evolve the chain since 2 and 1 are equivalent, but
+/// if you interpret the chain state then you will have 2 2 -1 1 which would imply
+/// you have a mismatch bond. However the correct interpretation would be 2 1 -1 2
+/// where you have a proper Dyck word nested withing your excited sites.
 pub fn evolve_chain(chain: &mut Vec<i8>, random_index: usize, chain_size: usize) -> bool {
 
     let mut is_chain_alive = true;
@@ -171,6 +177,7 @@ pub fn evolve_chain(chain: &mut Vec<i8>, random_index: usize, chain_size: usize)
         }
     } else {
         if (middle_spin == 1 || middle_spin == 2) && right_spin == -1 && left_spin_index != 0{
+            print!("I did this");
             let temp_value = chain[middle_spin_index];
             chain[middle_spin_index] = chain[left_spin_index];
             chain[left_spin_index] = temp_value;
